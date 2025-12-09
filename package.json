@@ -1,26 +1,70 @@
 {
   "name": "winccoa-vscode-logviewer",
-  "displayName": "WinCC OA Logviewer",
+  "displayName": "WinCC OA LogViewer",
+  "description": "LogViewer for WinCC OA - View and analyze log files in real-time",
   "publisher": "RichardJanisch",
   "version": "0.1.0",
   "author": "winccoa-tools-pack",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/winccoa-tools-pack/vscode_winccoa_logviewer"
+  },
   "engines": {
     "vscode": "^1.80.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:winccoa-logviewer.open"
+  ],
   "main": "dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "winccoa-logviewer.open",
+        "title": "Open WinCC OA LogViewer",
+        "category": "WinCC OA"
+      }
+    ],
+    "configuration": {
+      "title": "WinCC OA LogViewer",
+      "properties": {
+        "winccoaLogviewer.logLevel": {
+          "type": "string",
+          "enum": ["debug", "info", "warn", "error"],
+          "default": "info",
+          "description": "Log level for the extension output channel (debug shows all internal operations)"
+        },
+        "winccoaLogviewer.logPathSource": {
+          "type": "string",
+          "enum": ["static", "workspace", "npm-package"],
+          "default": "workspace",
+          "enumDescriptions": [
+            "Use a static path configured in settings",
+            "Derive path from workspace root (workspace/log)",
+            "Get path from WinCC OA project info npm package (when available)"
+          ],
+          "description": "How to determine the log directory path"
+        },
+        "winccoaLogviewer.staticLogPath": {
+          "type": "string",
+          "default": "",
+          "description": "Static log directory path (used when logPathSource is 'static'). Example: C:\\wincc_proj\\DevEnv\\DevEnv\\log or /home/user/wincc_proj/DevEnv/DevEnv/log"
+        }
+      }
+    }
+  },
   "scripts": {
+    "vscode:prepublish": "npm run compile",
     "build": "tsc --build",
-    "compile": "tsc --build",
+    "compile": "npm run build:webview && tsc -p ./",
+    "build:webview": "cd webview && npm run build",
+    "watch": "tsc --build --watch",
     "lint": "echo \"Lint passed\"",
     "test": "node ./dist/test/runTest.js",
-    "watch": "tsc --build --watch",
-    "package": "vsce package",
-    "vscode:prepublish": "npm run compile"
+    "package": "vsce package"
   },
   "devDependencies": {
     "typescript": "^5.2.0",
@@ -31,5 +75,8 @@
     "@vscode/test-electron": "^2.3.9",
     "mocha": "^11.7.5",
     "glob": "^13.0.0"
+  },
+  "dependencies": {
+    "@winccoa-tools-pack/npm-shared-library-core": "github:winccoa-tools-pack/npm-shared-library-core#main"
   }
 }

@@ -3,6 +3,7 @@ node_modules/
 
 # Build output
 dist/
+bin/
 
 # IDE
 .vscode/
@@ -29,3 +30,7 @@ coverage/
 # Temporary files
 *.tmp
 .cache/
+
+# Webview compiled files (TypeScript artifacts)
+webview/src/**/*.js
+webview/src/**/*.js.map
