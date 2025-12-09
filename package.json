@@ -1,7 +1,7 @@
 {
-  "name": "winccoa-vscode-extension",
-  "displayName": "WinCC OA Tools (template)",
-  "publisher": "winccoa-tools-pack",
+  "name": "winccoa-vscode-logviewer",
+  "displayName": "WinCC OA Logviewer",
+  "publisher": "RichardJanisch",
   "version": "0.1.0",
   "author": "winccoa-tools-pack",
   "license": "MIT",
