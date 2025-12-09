@@ -73,21 +73,25 @@ export class PathResolver {
             return undefined;
         }
 
-        // Use first workspace folder
-        const workspaceRoot = workspaceFolders[0].uri.fsPath;
-        const logPath = path.join(workspaceRoot, 'log');
+        // Search through all workspace folders for a 'log' directory
+        for (const folder of workspaceFolders) {
+            const workspaceRoot = folder.uri.fsPath;
+            const logPath = path.join(workspaceRoot, 'log');
 
-        // Check if log directory exists
-        if (!fs.existsSync(logPath)) {
-            logger.warn('Log directory does not exist in workspace', { workspace: workspaceRoot, logPath });
-            vscode.window.showWarningMessage(
-                `WinCC OA LogViewer: Log directory not found at ${logPath}. Please ensure the workspace contains a 'log' folder or configure a different path source.`
-            );
-            return undefined;
+            // Check if log directory exists in this workspace folder
+            if (fs.existsSync(logPath)) {
+                logger.info('Using workspace-derived log path', { workspace: workspaceRoot, logPath });
+                return logPath;
+            }
         }
 
-        logger.info('Using workspace-derived log path', { workspace: workspaceRoot, logPath });
-        return logPath;
+        // No log directory found in any workspace folder
+        const firstWorkspace = workspaceFolders[0].uri.fsPath;
+        logger.warn('Log directory does not exist in any workspace folder', { workspaces: workspaceFolders.map(f => f.uri.fsPath) });
+        vscode.window.showWarningMessage(
+            `WinCC OA LogViewer: Log directory not found in any workspace folder. Please ensure one of your workspace folders contains a 'log' folder or configure a different path source.`
+        );
+        return undefined;
     }
 
     /**
