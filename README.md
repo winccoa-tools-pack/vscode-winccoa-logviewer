@@ -4,7 +4,7 @@
 
 ![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-![VS Code](https://img.shields.io/badge/VS%20Code-^1.80.0-007ACC.svg)
+![VS Code](https://img.shields.io/badge/VS%20Code-^1.106.0-007ACC.svg)
 
 **Real-time log file viewer and analyzer for WinCC OA in Visual Studio Code**
 
