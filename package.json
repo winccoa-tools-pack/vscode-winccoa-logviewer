@@ -6,6 +6,7 @@
   "version": "0.1.0",
   "author": "winccoa-tools-pack",
   "license": "MIT",
+  "icon": "resources/logviewer_industrial_calm_128.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/winccoa-tools-pack/vscode-winccoa-logviewer"

@@ -10,7 +10,7 @@ Makefile
 .markdownlint.json
 bin/**
 src/**
-webview/**
 tsconfig.json
 tsconfig.tsbuildinfo
 node_modules/**
+!webview/dist/**
