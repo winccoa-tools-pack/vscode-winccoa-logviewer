@@ -51,7 +51,7 @@ Configure the extension to locate your WinCC OA log directory.
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `winccoaLogviewer.logPathSource` | `static` | How to determine log path: `static` (fixed path) or `workspace` (derive from workspace root) |
-| `winccoaLogviewer.staticLogPath` | - | Fixed path to WinCC OA log directory (e.g., `C:\wincc_proj\DevEnv\log`) |
+| `winccoaLogviewer.staticLogPath` | - | Fixed path to WinCC OA log directory (e.g., `C:\WinCC_OA\MyProject\log`) |
 
 ### Recommended Configuration
 
@@ -59,7 +59,7 @@ Configure the extension to locate your WinCC OA log directory.
 ```json
 {
   "winccoaLogviewer.logPathSource": "static",
-  "winccoaLogviewer.staticLogPath": "C:\\wincc_proj\\DevEnv\\log"
+  "winccoaLogviewer.staticLogPath": "C:\\WinCC_OA\\MyProject\\log"
 }
 ```
 
