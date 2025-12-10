@@ -1,62 +1,139 @@
 # WinCC OA LogViewer
 
-⚠️ **Pre-Release Version** - This is the very first pre-release version. Not all features have been fully tested yet.
+<div align="center">
 
-A VS Code extension for viewing and analyzing WinCC OA log files in real-time.
+![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![VS Code](https://img.shields.io/badge/VS%20Code-^1.80.0-007ACC.svg)
 
-## Features
+**Real-time log file viewer and analyzer for WinCC OA in Visual Studio Code**
 
-- Real-time log file monitoring with file watcher
-- Syntax highlighting for log events
-- Filter by severity level (DEBUG, INFO, WARNING, ERROR, SEVERE)
-- Search capabilities across all log entries
-- Click on file paths to open files directly in editor
-- Support for PVSS_II.log format with metadata parsing
-- Pause/Resume log streaming
+⚠️ *Pre-Release Version - Not all features have been fully tested yet*
 
-## Configuration
+</div>
 
-The extension can be configured via VS Code settings:
+---
 
-### Recommended Settings
+## ✨ Features
 
-It is recommended to use either **static path** or **workspace** as the log path source:
+### 📊 Real-Time Log Monitoring
+- **Live file watching** with automatic updates
+- **Syntax highlighting** for log events
+- **Pause/Resume** log streaming on demand
 
-- **Static Path** (`winccoaLogviewer.logPathSource: "static"`): Use a fixed path to your WinCC OA log directory
-  - Set `winccoaLogviewer.staticLogPath` to your log directory (e.g., `C:\wincc_proj\DevEnv\DevEnv\log`)
-  
-- **Workspace** (`winccoaLogviewer.logPathSource: "workspace"`): Automatically derive log path from workspace root
-  - The extension will look for a `log` folder in your workspace root directory
+### 🔍 Advanced Filtering & Search
+- Filter by **severity level** (DEBUG, INFO, WARNING, ERROR, SEVERE)
+- **Search capabilities** across all log entries
+- Support for **PVSS_II.log format** with metadata parsing
 
-### How it works
+### 🚀 Smart Navigation
+- Click on file paths to **open files directly** in editor
+- Seamless integration with VS Code workspace
 
-The LogViewer watches the specified log directory and monitors all `.log` files. When changes are detected (new log entries), they are automatically displayed in the webview interface. You can pause/resume the live stream at any time.
+---
 
-## Usage
+## 🚀 Getting Started
+
+### Installation
+1. Open VS Code
+2. Go to Extensions (`Ctrl+Shift+X`)
+3. Search for "WinCC OA LogViewer"
+4. Click Install
+
+### Configuration
+
+Configure the extension to locate your WinCC OA log directory.
+
+---
+
+## ⚙️ Settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `winccoaLogviewer.logPathSource` | `static` | How to determine log path: `static` (fixed path) or `workspace` (derive from workspace root) |
+| `winccoaLogviewer.staticLogPath` | - | Fixed path to WinCC OA log directory (e.g., `C:\WinCC_OA\MyProject\log`) |
+
+### Recommended Configuration
+
+**Static Path** (recommended for single projects):
+```json
+{
+  "winccoaLogviewer.logPathSource": "static",
+  "winccoaLogviewer.staticLogPath": "C:\\WinCC_OA\\MyProject\\log"
+}
+```
+
+**Workspace** (auto-detect from workspace):
+```json
+{
+  "winccoaLogviewer.logPathSource": "workspace"
+}
+```
+The extension will look for a `log` folder in your workspace root directory.
+
+---
+
+## 📋 Usage
 
 ### Open LogViewer
 
-- Open Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P`)
-- Run command: `WinCC OA: Open LogViewer`
+1. Open Command Palette (`Ctrl+Shift+P`)
+2. Run command: **`WinCC OA: Open LogViewer`**
+3. The LogViewer opens in a new editor column and starts watching the configured log directory
 
-The LogViewer will open in a new editor column and automatically start watching the configured log directory.
-
-### From other extensions
+### From Other Extensions
 
 ```typescript
 vscode.commands.executeCommand('winccoa-logviewer.open', logPath);
 ```
 
-Press F5 to debug the extension.
+### How It Works
 
-## Disclaimer
+The LogViewer watches the specified log directory and monitors all `.log` files. When changes are detected (new log entries), they are automatically displayed in the webview interface. You can pause/resume the live stream at any time.
+
+---
+
+## 🛠️ Requirements
+
+- Visual Studio Code 1.80.0 or higher
+- WinCC OA installation with accessible log directory
+
+---
+
+## 📜 Disclaimer
 
 WinCC OA and Siemens are trademarks of Siemens AG. This project is not affiliated with, endorsed by, or sponsored by Siemens AG. This is a community-driven open source project created to enhance the development experience for WinCC OA developers.
 
-## License
+---
 
-This repository is licensed under the MIT License — see the included LICENSE file for details.
+## 📄 License
 
-## Contributing
+This project is licensed under the **MIT License**.
 
-Contributions are welcome. If you want to add more extensions to the pack or suggestions for documentation, open an issue or submit a pull request.
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Whether you want to:
+- Report bugs or issues
+- Suggest new features
+- Improve documentation
+- Submit code improvements
+
+Please open an issue or submit a pull request on [GitHub](https://github.com/winccoa-tools-pack/vscode-winccoa-logviewer).
+
+---
+
+## 🔗 Links
+
+- [GitHub Repository](https://github.com/winccoa-tools-pack/vscode-winccoa-logviewer)
+- [Issue Tracker](https://github.com/winccoa-tools-pack/vscode-winccoa-logviewer/issues)
+- [WinCC OA Documentation](https://www.winccoa.com)
+
+---
+
+<div align="center">
+
+Made with ❤️ for the WinCC OA community
+
+</div>

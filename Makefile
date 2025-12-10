@@ -1,5 +1,10 @@
 .PHONY: help install build clean watch package test
 
+# Variables
+EXTENSION_NAME := winccoa-vscode-logviewer
+VERSION := $(shell node -p "require('./package.json').version")
+BIN_DIR := bin
+
 # Default target
 help:
 	@echo "Available targets:"
@@ -43,9 +48,9 @@ watch:
 # Package extension
 package: build
 	@echo "Packaging extension..."
-	@mkdir -p bin
-	npx vsce package --out bin/
-	@echo "Package created successfully in bin/!"
+	@mkdir -p $(BIN_DIR)
+	npx vsce package --out $(BIN_DIR)/$(EXTENSION_NAME)-$(VERSION).vsix
+	@echo "Package created: $(BIN_DIR)/$(EXTENSION_NAME)-$(VERSION).vsix"
 
 # Run tests
 test:

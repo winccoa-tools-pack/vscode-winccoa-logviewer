@@ -1,0 +1,16 @@
+.vscode/**
+.vscode-test/**
+**/*.map
+.gitignore
+.gitattributes
+.gitflow
+.github/**
+*.vsix
+Makefile
+.markdownlint.json
+bin/**
+src/**
+webview/**
+tsconfig.json
+tsconfig.tsbuildinfo
+node_modules/**

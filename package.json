@@ -8,7 +8,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/winccoa-tools-pack/vscode_winccoa_logviewer"
+    "url": "https://github.com/winccoa-tools-pack/vscode-winccoa-logviewer"
   },
   "engines": {
     "vscode": "^1.80.0"
@@ -51,7 +51,7 @@
         "winccoaLogviewer.staticLogPath": {
           "type": "string",
           "default": "",
-          "description": "Static log directory path (used when logPathSource is 'static'). Example: C:\\wincc_proj\\DevEnv\\DevEnv\\log or /home/user/wincc_proj/DevEnv/DevEnv/log"
+          "description": "Static log directory path (used when logPathSource is 'static'). Example: C:\\WinCC_OA\\MyProject\\log or /opt/WinCC_OA/MyProject/log"
         }
       }
     }
