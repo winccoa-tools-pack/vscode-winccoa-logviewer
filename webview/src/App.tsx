@@ -64,7 +64,7 @@ function App() {
   const [selectedLogFiles, setSelectedLogFiles] = useState<Set<string>>(new Set());
   const [logFileSearch, setLogFileSearch] = useState('');
   const [newestFirst, setNewestFirst] = useState(true); // Default: newest logs at top
-  const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set()); // Track expanded logs by index
+  const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set()); // Track expanded logs by unique key
 
   // Toggle pause state and notify extension
   const togglePause = () => {
@@ -212,6 +212,15 @@ function App() {
         case 'newLogEvent':
           // Add new log event to the top
           setAllLogs(prev => [message.event, ...prev]);
+          // Auto-expand SEVERE logs
+          if (message.event.severity === 'SEVERE' && (message.event.metadata?.raw || message.event.metadata?.stacktrace)) {
+            const logKey = `${message.event.identifier}-${message.event.timestamp}-0`;
+            setExpandedLogs(prev => {
+              const newSet = new Set(prev);
+              newSet.add(logKey);
+              return newSet;
+            });
+          }
           break;
         case 'availableLogFiles':
           // Receive available log files from backend
@@ -273,6 +282,23 @@ function App() {
     // Apply log order: if newestFirst is false, reverse the array
     return newestFirst ? filtered : [...filtered].reverse();
   }, [allLogs, severityFilter, searchTerm, selectedLogFiles, availableLogFiles, newestFirst]);
+
+  // Auto-expand SEVERE logs when filteredLogs change
+  useEffect(() => {
+    filteredLogs.forEach((log, index) => {
+      if (log.severity === 'SEVERE' && (log.metadata?.raw || log.metadata?.stacktrace)) {
+        const logKey = `${log.identifier}-${log.timestamp}-${index}`;
+        setExpandedLogs(prev => {
+          if (!prev.has(logKey)) {
+            const newSet = new Set(prev);
+            newSet.add(logKey);
+            return newSet;
+          }
+          return prev;
+        });
+      }
+    });
+  }, [filteredLogs]);
 
   const handleClear = () => {
     setAllLogs([]);
@@ -837,12 +863,13 @@ function App() {
               onClick={() => {
                 // Toggle expand/collapse if metadata exists
                 if (log.metadata && (log.metadata.raw || log.metadata.stacktrace)) {
+                  const logKey = `${log.identifier}-${log.timestamp}-${index}`;
                   setExpandedLogs(prev => {
                     const newSet = new Set(prev);
-                    if (newSet.has(index)) {
-                      newSet.delete(index);
+                    if (newSet.has(logKey)) {
+                      newSet.delete(logKey);
                     } else {
-                      newSet.add(index);
+                      newSet.add(logKey);
                     }
                     return newSet;
                   });
@@ -909,23 +936,26 @@ function App() {
                     <div style={{ fontWeight: 500, marginBottom: '4px' }}>
                       {log.message}
                       {/* Expand/Collapse indicator for metadata */}
-                      {log.metadata && (log.metadata.raw || log.metadata.stacktrace) && (
-                        <span 
-                          style={{
-                            marginLeft: '8px',
-                            opacity: 0.6,
-                            fontSize: '12px',
-                            userSelect: 'none'
-                          }}
-                          title={expandedLogs.has(index) ? 'Collapse details' : 'Expand details'}
-                        >
-                          {expandedLogs.has(index) ? '▼' : '▶'}
-                        </span>
-                      )}
+                      {log.metadata && (log.metadata.raw || log.metadata.stacktrace) && (() => {
+                        const logKey = `${log.identifier}-${log.timestamp}-${index}`;
+                        return (
+                          <span 
+                            style={{
+                              marginLeft: '8px',
+                              opacity: 0.6,
+                              fontSize: '12px',
+                              userSelect: 'none'
+                            }}
+                            title={expandedLogs.has(logKey) ? 'Collapse details' : 'Expand details'}
+                          >
+                            {expandedLogs.has(logKey) ? '▼' : '▶'}
+                          </span>
+                        );
+                      })()}
                     </div>
                     
                     {/* Metadata Display - only if expanded */}
-                    {log.metadata && expandedLogs.has(index) && (
+                    {log.metadata && expandedLogs.has(`${log.identifier}-${log.timestamp}-${index}`) && (
                       <div style={{ 
                         fontSize: '11px', 
                         fontFamily: 'var(--vscode-editor-font-family)',
