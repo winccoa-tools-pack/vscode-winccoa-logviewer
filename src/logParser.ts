@@ -64,14 +64,15 @@ export class LogParser {
      * Parse main log line
      * Format: WCCOActrl    (4), 2025.11.16 18:56:26.972, CTRL, WARNING,     5, this is a warning
      * Format: WCCILdataSQLite(0), 2025.12.13 21:08:09.655, SYS,  INFO,        4, Connected
+     * Format: WCCOActrl    (2), 2025.12.13 21:12:36.581, PARAM,WARNING,     3/ctrl, Library
      */
     private parseMainLine(line: string): Partial<LogEvent> | null {
         // Trim the line first to handle any leading/trailing whitespace
         const trimmedLine = line.trim();
         
         // Regex: IDENTIFIER + optional spaces + (NUM), + TIMESTAMP, + SCOPE, + SEVERITY, + MSGNUM, + MESSAGE
-        // Note: \s* instead of \s+ before ( to handle both "WCCOActrl    (0)" and "WCCILdataSQLite(0)"
-        const regex = /^(\w+)\s*\((\d+)\),\s+(\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3}),\s+(\w+),\s+(\w+),\s+(.+)$/;
+        // Note: \s* instead of \s+ to handle missing spaces ("PARAM,WARNING" and "WCCILdataSQLite(0)")
+        const regex = /^(\w+)\s*\((\d+)\),\s+(\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3}),\s*(\w+),\s*(\w+),\s+(.+)$/;
         const match = trimmedLine.match(regex);
 
         if (!match) {

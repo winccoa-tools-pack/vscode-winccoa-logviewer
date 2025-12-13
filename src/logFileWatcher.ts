@@ -238,11 +238,12 @@ export class LogFileWatcher {
      * Check if a line matches PVSS_II log format
      * Format: IDENTIFIER (NUM), YYYY.MM.DD HH:mm:ss.SSS, SCOPE, SEVERITY, MSGNUM, MESSAGE
      * Format: WCCILdataSQLite(0), ... or WCCOActrl    (0), ...
+     * Format: PARAM,WARNING (no space after comma)
      */
     private isPVSSFormat(line: string): boolean {
         // Regex: IDENTIFIER + optional spaces + (NUM), + TIMESTAMP, + SCOPE, + SEVERITY, + rest
-        // Note: \s* instead of \s+ to handle both formats with and without spaces before (
-        const regex = /^\w+\s*\(\d+\),\s+\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3},\s+\w+,\s+\w+,\s+/;
+        // Note: \s* instead of \s+ to handle missing spaces (PARAM,WARNING and WCCILdataSQLite(0))
+        const regex = /^\w+\s*\(\d+\),\s+\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3},\s*\w+,\s*\w+,\s+/;
         return regex.test(line.trim());
     }
 
