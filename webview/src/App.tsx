@@ -64,6 +64,7 @@ function App() {
   const [selectedLogFiles, setSelectedLogFiles] = useState<Set<string>>(new Set());
   const [logFileSearch, setLogFileSearch] = useState('');
   const [newestFirst, setNewestFirst] = useState(true); // Default: newest logs at top
+  const [expandedLogs, setExpandedLogs] = useState<Set<number>>(new Set()); // Track expanded logs by index
 
   // Toggle pause state and notify extension
   const togglePause = () => {
@@ -831,7 +832,21 @@ function App() {
                 borderRadius: '2px',
                 backgroundColor: 'var(--vscode-editor-background)',
                 transition: 'background-color 0.1s',
-                cursor: 'pointer'
+                cursor: log.metadata && (log.metadata.raw || log.metadata.stacktrace) ? 'pointer' : 'default'
+              }}
+              onClick={() => {
+                // Toggle expand/collapse if metadata exists
+                if (log.metadata && (log.metadata.raw || log.metadata.stacktrace)) {
+                  setExpandedLogs(prev => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(index)) {
+                      newSet.delete(index);
+                    } else {
+                      newSet.add(index);
+                    }
+                    return newSet;
+                  });
+                }
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = 'var(--vscode-list-hoverBackground)';
@@ -893,10 +908,24 @@ function App() {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 500, marginBottom: '4px' }}>
                       {log.message}
+                      {/* Expand/Collapse indicator for metadata */}
+                      {log.metadata && (log.metadata.raw || log.metadata.stacktrace) && (
+                        <span 
+                          style={{
+                            marginLeft: '8px',
+                            opacity: 0.6,
+                            fontSize: '12px',
+                            userSelect: 'none'
+                          }}
+                          title={expandedLogs.has(index) ? 'Collapse details' : 'Expand details'}
+                        >
+                          {expandedLogs.has(index) ? '▼' : '▶'}
+                        </span>
+                      )}
                     </div>
                     
-                    {/* Metadata Display */}
-                    {log.metadata && (
+                    {/* Metadata Display - only if expanded */}
+                    {log.metadata && expandedLogs.has(index) && (
                       <div style={{ 
                         fontSize: '11px', 
                         fontFamily: 'var(--vscode-editor-font-family)',
@@ -919,7 +948,10 @@ function App() {
                               cursor: 'pointer',
                               color: 'var(--color-link)'
                             }}
-                            onClick={() => handleFileClick(log.metadata!.library!, log.metadata!.line)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleFileClick(log.metadata!.library!, log.metadata!.line);
+                            }}
                             onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
                             onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
                           >
@@ -950,7 +982,10 @@ function App() {
                                   cursor: 'pointer',
                                   color: 'var(--color-link)'
                                 }}
-                                onClick={() => handleFileClick(entry.filePath, entry.line)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleFileClick(entry.filePath, entry.line);
+                                }}
                                 onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
                                 onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
                               >
