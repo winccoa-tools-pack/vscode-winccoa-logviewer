@@ -1,4 +1,4 @@
-export type LogSeverity = 'INFO' | 'WARNING' | 'ERROR' | 'SEVERE' | 'DEBUG' | 'OTHER';
+export type LogSeverity = 'INFO' | 'WARNING' | 'FATAL' | 'SEVERE' | 'DEBUG' | 'OTHER';
 
 export interface LogFileRef {
   path: string;

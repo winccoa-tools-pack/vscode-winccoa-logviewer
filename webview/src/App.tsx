@@ -125,7 +125,7 @@ function App() {
   };
   const [searchTerm, setSearchTerm] = useState('');
   const [severityFilter, setSeverityFilter] = useState<Set<LogSeverity>>(
-    new Set(['DEBUG', 'INFO', 'WARNING', 'ERROR', 'SEVERE', 'OTHER'])
+    new Set(['DEBUG', 'INFO', 'WARNING', 'FATAL', 'SEVERE', 'OTHER'])
   );
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>({
     identifier: true,
@@ -368,7 +368,7 @@ function App() {
   const getSeverityColor = (severity: LogSeverity) => {
     switch (severity) {
       case 'SEVERE': return 'var(--severity-severe)';
-      case 'ERROR': return 'var(--severity-error)';
+      case 'FATAL': return 'var(--severity-error)';
       case 'WARNING': return 'var(--severity-warning)';
       case 'INFO': return 'var(--severity-info)';
       case 'DEBUG': return 'var(--severity-debug)';
@@ -381,7 +381,7 @@ function App() {
     
     switch (severity) {
       case 'SEVERE': return 'var(--severity-severe-bg)';
-      case 'ERROR': return 'var(--severity-error-bg)';
+      case 'FATAL': return 'var(--severity-error-bg)';
       case 'WARNING': return 'var(--severity-warning-bg)';
       case 'INFO': return 'var(--severity-info-bg)';
       case 'DEBUG': return 'var(--severity-debug-bg)';
@@ -438,7 +438,7 @@ function App() {
         {/* Severity Filter - linksbündig */}
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '11px', fontWeight: 600, opacity: 0.7, width: '48px' }}>FILTER:</span>
-          {(['DEBUG', 'INFO', 'WARNING', 'ERROR', 'SEVERE', 'OTHER'] as LogSeverity[]).map(severity => (
+          {(['DEBUG', 'INFO', 'WARNING', 'FATAL', 'SEVERE', 'OTHER'] as LogSeverity[]).map(severity => (
             <button
               key={severity}
               onClick={() => toggleSeverity(severity)}

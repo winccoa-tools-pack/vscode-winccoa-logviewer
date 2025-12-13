@@ -243,7 +243,8 @@ export class LogParser {
             case 'WARNING':
                 return 'WARNING';
             case 'ERROR':
-                return 'ERROR';
+            case 'FATAL':
+                return 'FATAL';
             case 'SEVERE':
                 return 'SEVERE';
             case 'DEBUG':
