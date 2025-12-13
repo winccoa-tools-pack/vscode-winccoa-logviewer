@@ -178,6 +178,20 @@ export class LogParser {
             return;
         }
 
+        // Parse Line on separate line (format: ", Line 2" after Script metadata)
+        // This happens when Script is on previous line and Line follows with comma prefix
+        if (trimmed.match(/^,\s*Line\s+(\d+)/i)) {
+            const lineMatch = trimmed.match(/^,\s*Line\s+(\d+)/i);
+            if (lineMatch && this.currentEvent.metadata.script) {
+                // We have script from previous line, now set the line number
+                this.currentEvent.metadata.library = this.currentEvent.metadata.script;
+                this.currentEvent.metadata.line = parseInt(lineMatch[1], 10);
+                // Clear script since we moved it to library
+                delete this.currentEvent.metadata.script;
+            }
+            return;
+        }
+
         // Everything else goes to raw
         if (trimmed.length > 0 && !trimmed.startsWith('Script:') && !trimmed.startsWith('Library:') && !trimmed.startsWith('Line:')) {
             if (!this.currentEvent.metadata.raw) {
