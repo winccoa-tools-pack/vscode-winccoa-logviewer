@@ -1,13 +1,13 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
-import { LogParser, parseGenericLogLine } from './logParser';
+import { LogParser, parseGenericLogLine, GenericLogParser } from './logParser';
 import { LogEvent } from './logEvent';
 import { ExtensionOutputChannel } from './extensionOutput';
 
 export class LogFileWatcher {
     private watcher: vscode.FileSystemWatcher | undefined;
-    private parsers = new Map<string, LogParser>(); // Separate parser per file
+    private parsers = new Map<string, LogParser | GenericLogParser>(); // Separate parser per file
     private filePositions = new Map<string, number>(); // Track read position for each file
     private onNewEventCallback: ((event: LogEvent) => void) | undefined;
     private isPaused = false;
@@ -178,7 +178,7 @@ export class LogFileWatcher {
                     if (!parser) {
                         parser = new LogParser();
                         this.parsers.set(key, parser);
-                        ExtensionOutputChannel.trace('LogFileWatcher', `Created new parser for: ${fileName}`);
+                        ExtensionOutputChannel.trace('LogFileWatcher', `Created new PVSS_II parser for: ${fileName}`);
                     }
 
                     // Parse PVSS_II.log with proper parser
@@ -195,17 +195,25 @@ export class LogFileWatcher {
 
                     ExtensionOutputChannel.debug('LogFileWatcher', `Processed PVSS_II.log: ${lines.length} lines, ${eventCount} events`);
                 } else {
-                    // Other log files: emit as generic events
+                    // Other log files: use GenericLogParser for multi-line support
+                    let parser = this.parsers.get(key);
+                    if (!parser) {
+                        parser = new GenericLogParser(fileName);
+                        this.parsers.set(key, parser);
+                        ExtensionOutputChannel.trace('LogFileWatcher', `Created new GenericLogParser for: ${fileName}`);
+                    }
+
                     let eventCount = 0;
                     for (const line of lines) {
                         if (line.trim()) {
-                            const event = parseGenericLogLine(line, fileName);
-                            if (event) {
+                            const events = parser.parseLine(line);
+                            events.forEach((event: LogEvent) => {
                                 this.emitEvent(event);
                                 eventCount++;
-                            }
+                            });
                         }
                     }
+                    
                     ExtensionOutputChannel.debug('LogFileWatcher', `Processed ${fileName}: ${lines.length} lines, ${eventCount} events`);
                 }
 

@@ -273,3 +273,142 @@ export function parseGenericLogLine(line: string, fileName: string): LogEvent | 
         rawLines: [line]
     };
 }
+
+/**
+ * Parser for generic log files (non-PVSS_II.log)
+ * Handles multi-line log entries based on:
+ * 1. Lines starting with tab or whitespace belong to previous message
+ * 2. Bracket matching: [ ] groups belong together
+ */
+export class GenericLogParser {
+    private buffer: string[] = [];
+    private currentEvent: Partial<LogEvent> | null = null;
+    private bracketDepth = 0;
+    private fileName: string;
+
+    constructor(fileName: string) {
+        this.fileName = fileName;
+    }
+
+    /**
+     * Parse a single line and return completed events
+     */
+    public parseLine(line: string): LogEvent[] {
+        const completedEvents: LogEvent[] = [];
+
+        // Check if this is a continuation line (starts with tab or multiple spaces)
+        const isContinuation = /^[\t ]/.test(line);
+
+        // Count brackets in current line
+        const openBrackets = (line.match(/\[/g) || []).length;
+        const closeBrackets = (line.match(/\]/g) || []).length;
+
+        if (this.currentEvent && (isContinuation || this.bracketDepth > 0)) {
+            // This line belongs to the current event
+            this.buffer.push(line);
+            this.bracketDepth += openBrackets - closeBrackets;
+
+            // If brackets are balanced and we're not in continuation, complete the event
+            if (this.bracketDepth === 0 && !isContinuation) {
+                const completed = this.finalizeEvent();
+                if (completed) {
+                    completedEvents.push(completed);
+                }
+            }
+        } else {
+            // This is a new main line
+            // First, complete previous event if exists
+            if (this.currentEvent) {
+                const completed = this.finalizeEvent();
+                if (completed) {
+                    completedEvents.push(completed);
+                }
+            }
+
+            // Start new event
+            this.currentEvent = this.parseGenericLine(line);
+            this.buffer = [line];
+            this.bracketDepth = openBrackets - closeBrackets;
+        }
+
+        return completedEvents;
+    }
+
+    /**
+     * Finalize and return any remaining event in buffer
+     */
+    public flush(): LogEvent | null {
+        if (this.currentEvent) {
+            return this.finalizeEvent();
+        }
+        return null;
+    }
+
+    /**
+     * Parse a generic log line (extract identifier and message)
+     * Format: IDENTIFIER:MESSAGE or just MESSAGE
+     */
+    private parseGenericLine(line: string): Partial<LogEvent> {
+        // Try to extract identifier from format: "WCCOActrl2:["message"]"
+        const identifierMatch = line.match(/^(\w+):\s*(.*)$/);
+        
+        if (identifierMatch) {
+            const [, identifier, message] = identifierMatch;
+            return {
+                identifier: identifier.trim(),
+                timestamp: new Date().toISOString(),
+                scope: 'OTHER',
+                severity: 'OTHER',
+                message: message.trim(),
+                metadata: {
+                    raw: `From: ${this.fileName}`
+                },
+                rawLines: []
+            };
+        }
+
+        // Fallback: treat entire line as message
+        return {
+            identifier: 'GENERIC',
+            timestamp: new Date().toISOString(),
+            scope: 'OTHER',
+            severity: 'OTHER',
+            message: line.trim(),
+            metadata: {
+                raw: `From: ${this.fileName}`
+            },
+            rawLines: []
+        };
+    }
+
+    /**
+     * Finalize current event
+     */
+    private finalizeEvent(): LogEvent | null {
+        if (!this.currentEvent || !this.currentEvent.identifier) {
+            this.currentEvent = null;
+            this.buffer = [];
+            this.bracketDepth = 0;
+            return null;
+        }
+
+        // Combine all buffered lines into message
+        const fullMessage = this.buffer.join('\n');
+
+        const event: LogEvent = {
+            identifier: this.currentEvent.identifier,
+            timestamp: this.currentEvent.timestamp || new Date().toISOString(),
+            scope: this.currentEvent.scope || 'OTHER',
+            severity: this.currentEvent.severity || 'OTHER',
+            message: fullMessage,
+            metadata: this.currentEvent.metadata,
+            rawLines: [...this.buffer]
+        };
+
+        this.currentEvent = null;
+        this.buffer = [];
+        this.bracketDepth = 0;
+
+        return event;
+    }
+}
