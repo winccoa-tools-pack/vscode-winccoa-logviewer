@@ -1,38 +1,53 @@
 import * as vscode from 'vscode';
 import { LogViewerPanel } from './logViewerPanel';
-import { logger } from './logger';
+import { ExtensionOutputChannel } from './extensionOutput';
 import { PathResolver } from './pathResolver';
 
 export function activate(context: vscode.ExtensionContext) {
-    // Initialize logger
-    logger.initialize();
+    // Initialize Extension Output Channel
+    const extensionOutput = ExtensionOutputChannel.initialize();
+    context.subscriptions.push(extensionOutput);
     
-    // Register output channel
-    const outputChannel = logger.getOutputChannel();
-    if (outputChannel) {
-        context.subscriptions.push(outputChannel);
+    // Log activation with banner
+    ExtensionOutputChannel.info('Extension', '═══════════════════════════════════════════════════════');
+    ExtensionOutputChannel.info('Extension', '  WinCC OA LogViewer - Starting...');
+    ExtensionOutputChannel.info('Extension', '═══════════════════════════════════════════════════════');
+    ExtensionOutputChannel.debug('Extension', `Extension Path: ${context.extensionPath}`);
+    ExtensionOutputChannel.debug('Extension', `VS Code Version: ${vscode.version}`);
+    
+    // Log configuration status
+    const config = vscode.workspace.getConfiguration('winccoaLogviewer');
+    const logPathSource = config.get<string>('logPathSource', 'workspace');
+    const logLevel = config.get<string>('logLevel', 'INFO');
+    ExtensionOutputChannel.debug('Configuration', `Log Path Source: ${logPathSource}`);
+    ExtensionOutputChannel.debug('Configuration', `Log Level: ${logLevel}`);
+    
+    // Check if workspace is available
+    if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
+        ExtensionOutputChannel.debug('Extension', `Workspace folders: ${vscode.workspace.workspaceFolders.map(f => f.name).join(', ')}`);
+    } else {
+        ExtensionOutputChannel.warn('Extension', 'No workspace folder open');
     }
     
-    logger.info('WinCC OA LogViewer Extension activated');
+    ExtensionOutputChannel.info('Extension', 'WinCC OA LogViewer Extension activated');
 
     // Watch for configuration changes
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration(e => {
             if (e.affectsConfiguration('winccoaLogviewer.logLevel')) {
-                logger.updateLogLevel();
-                logger.info('Log level updated');
+                ExtensionOutputChannel.updateLogLevel();
             }
             
             // Handle log path configuration changes
             if (e.affectsConfiguration('winccoaLogviewer.logPathSource') || 
                 e.affectsConfiguration('winccoaLogviewer.staticLogPath')) {
-                logger.info('Log path configuration changed');
+                ExtensionOutputChannel.info('Configuration', 'Log path configuration changed');
                 
                 // If panel is open, update it with new path
                 if (LogViewerPanel.currentPanel) {
                     const newPath = PathResolver.getLogPath();
                     if (newPath) {
-                        logger.info('Updating active panel with new log path', { path: newPath });
+                        ExtensionOutputChannel.debug('Configuration', `Updating active panel with new log path: ${newPath}`);
                         LogViewerPanel.currentPanel.startWatching(newPath);
                     }
                 }
@@ -52,11 +67,11 @@ export function activate(context: vscode.ExtensionContext) {
             const resolvedPath = logPath || PathResolver.getLogPath();
             
             if (!resolvedPath) {
-                logger.warn('Cannot open LogViewer: no valid log path');
+                ExtensionOutputChannel.warn('Command', 'Cannot open LogViewer: no valid log path');
                 return;
             }
             
-            logger.info('Opening LogViewer', { logPath: resolvedPath });
+            ExtensionOutputChannel.info('Command', `Opening LogViewer: ${resolvedPath}`);
             LogViewerPanel.createOrShow(context.extensionUri, resolvedPath);
         }
     );
@@ -67,5 +82,5 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
-    logger.info('WinCC OA LogViewer Extension deactivated');
+    ExtensionOutputChannel.info('Extension', 'WinCC OA LogViewer Extension deactivated');
 }

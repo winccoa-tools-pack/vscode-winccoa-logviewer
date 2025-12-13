@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { logger } from './logger';
+import { ExtensionOutputChannel } from './extensionOutput';
 
 export type LogPathSource = 'static' | 'workspace' | 'npm-package';
 
@@ -16,7 +16,7 @@ export class PathResolver {
         const config = vscode.workspace.getConfiguration('winccoaLogviewer');
         const source = config.get<LogPathSource>('logPathSource', 'workspace');
 
-        logger.info('Resolving log path', { source });
+        ExtensionOutputChannel.debug('PathResolver', `Resolving log path with source: ${source}`);
 
         switch (source) {
             case 'static':
@@ -26,7 +26,7 @@ export class PathResolver {
             case 'npm-package':
                 return this.getNpmPackagePath();
             default:
-                logger.warn('Unknown log path source, falling back to workspace', { source });
+                ExtensionOutputChannel.warn('PathResolver', `Unknown log path source: ${source}, falling back to workspace`);
                 return this.getWorkspacePath();
         }
     }
@@ -39,7 +39,7 @@ export class PathResolver {
         const staticPath = config.get<string>('staticLogPath', '');
 
         if (!staticPath || staticPath.trim() === '') {
-            logger.warn('Static log path is not configured');
+            ExtensionOutputChannel.error('PathResolver', 'Static log path is not configured');
             vscode.window.showWarningMessage(
                 'WinCC OA LogViewer: Static log path is not configured. Please set "winccoaLogviewer.staticLogPath" in settings.'
             );
@@ -48,14 +48,14 @@ export class PathResolver {
 
         // Validate that path exists
         if (!fs.existsSync(staticPath)) {
-            logger.warn('Static log path does not exist', { path: staticPath });
+            ExtensionOutputChannel.error('PathResolver', `Static log path does not exist: ${staticPath}`);
             vscode.window.showWarningMessage(
                 `WinCC OA LogViewer: Static log path does not exist: ${staticPath}`
             );
             return undefined;
         }
 
-        logger.info('Using static log path', { path: staticPath });
+        ExtensionOutputChannel.info('PathResolver', `Using static log path: ${staticPath}`);
         return staticPath;
     }
 
@@ -66,7 +66,7 @@ export class PathResolver {
         const workspaceFolders = vscode.workspace.workspaceFolders;
 
         if (!workspaceFolders || workspaceFolders.length === 0) {
-            logger.warn('No workspace folder open');
+            ExtensionOutputChannel.error('PathResolver', 'No workspace folder open');
             vscode.window.showWarningMessage(
                 'WinCC OA LogViewer: No workspace folder is open. Please open a workspace or configure a static log path.'
             );
@@ -80,14 +80,14 @@ export class PathResolver {
 
             // Check if log directory exists in this workspace folder
             if (fs.existsSync(logPath)) {
-                logger.info('Using workspace-derived log path', { workspace: workspaceRoot, logPath });
+                ExtensionOutputChannel.info('PathResolver', `Using workspace-derived log path: ${logPath}`);
                 return logPath;
             }
         }
 
         // No log directory found in any workspace folder
         const firstWorkspace = workspaceFolders[0].uri.fsPath;
-        logger.warn('Log directory does not exist in any workspace folder', { workspaces: workspaceFolders.map(f => f.uri.fsPath) });
+        ExtensionOutputChannel.error('PathResolver', `Log directory does not exist in any workspace folder: ${workspaceFolders.map(f => f.uri.fsPath).join(', ')}`);
         vscode.window.showWarningMessage(
             `WinCC OA LogViewer: Log directory not found in any workspace folder. Please ensure one of your workspace folders contains a 'log' folder or configure a different path source.`
         );
@@ -99,7 +99,7 @@ export class PathResolver {
      * TODO: Implement when npm package is available
      */
     private static getNpmPackagePath(): string | undefined {
-        logger.warn('npm-package path source not yet implemented');
+        ExtensionOutputChannel.warn('PathResolver', 'npm-package path source not yet implemented');
         vscode.window.showWarningMessage(
             'WinCC OA LogViewer: NPM package integration is not yet available. Please use "static" or "workspace" path source for now.'
         );
@@ -110,15 +110,17 @@ export class PathResolver {
      * Validate that a path exists and is a directory
      */
     public static validatePath(logPath: string): boolean {
+        ExtensionOutputChannel.trace('PathResolver', `Validating path: ${logPath}`);
         try {
             const stats = fs.statSync(logPath);
             if (!stats.isDirectory()) {
-                logger.warn('Path is not a directory', { path: logPath });
+                ExtensionOutputChannel.warn('PathResolver', `Path is not a directory: ${logPath}`);
                 return false;
             }
+            ExtensionOutputChannel.trace('PathResolver', `Path validated successfully: ${logPath}`);
             return true;
         } catch (error) {
-            logger.error('Path validation failed', error, { path: logPath });
+            ExtensionOutputChannel.error('PathResolver', `Path validation failed: ${logPath}`, error as Error);
             return false;
         }
     }

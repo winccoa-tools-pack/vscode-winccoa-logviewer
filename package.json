@@ -34,9 +34,16 @@
       "properties": {
         "winccoaLogviewer.logLevel": {
           "type": "string",
-          "enum": ["debug", "info", "warn", "error"],
-          "default": "info",
-          "description": "Log level for the extension output channel (debug shows all internal operations)"
+          "enum": ["ERROR", "WARN", "INFO", "DEBUG", "TRACE"],
+          "default": "INFO",
+          "description": "Logging level for extension output",
+          "enumDescriptions": [
+            "Only critical errors",
+            "Errors and warnings",
+            "General information, errors and warnings (recommended)",
+            "Detailed debugging information",
+            "Very verbose trace information (for troubleshooting)"
+          ]
         },
         "winccoaLogviewer.logPathSource": {
           "type": "string",
