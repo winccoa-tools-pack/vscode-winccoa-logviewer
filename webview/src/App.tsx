@@ -965,7 +965,19 @@ function App() {
                         
                         {/* Raw text */}
                         {log.metadata.raw && (
-                          <div style={{ marginTop: '4px', color: 'var(--color-comment)', fontStyle: 'italic' }}>
+                          <div style={{ 
+                            marginTop: '4px', 
+                            color: 'var(--color-comment)', 
+                            fontFamily: 'monospace',
+                            fontSize: '11px',
+                            whiteSpace: 'pre',
+                            backgroundColor: 'var(--vscode-editor-background)',
+                            padding: '8px',
+                            borderRadius: '4px',
+                            overflowX: 'auto',
+                            maxHeight: '400px',
+                            overflowY: 'auto'
+                          }}>
                             {log.metadata.raw}
                           </div>
                         )}

@@ -416,14 +416,44 @@ export class GenericLogParser {
 
         // Combine all buffered lines into message
         const fullMessage = this.buffer.join('\n');
+        
+        // Check if this is a complex data structure (dyn_anytype, dyn_string, etc.)
+        // Pattern can be anywhere in first line: ["text"][dyn_string 4 items
+        const firstLine = this.buffer[0];
+        const dataTypeMatch = firstLine.match(/\[(dyn_[\w_]+)\s+(\d+)\s+items?/i);
+        
+        let message = fullMessage;
+        let metadata = this.currentEvent.metadata || {};
+        
+        if (dataTypeMatch && this.buffer.length > 2) {
+            // This is a complex data structure
+            const [, dataType, itemCount] = dataTypeMatch;
+            const lineCount = this.buffer.length;
+            
+            // Check if there's a prefix before the data structure
+            const prefixMatch = firstLine.match(/^(.*?)\[(dyn_[\w_]+)/);
+            let prefix = '';
+            if (prefixMatch && prefixMatch[1].trim()) {
+                prefix = prefixMatch[1].trim() + ' ';
+            }
+            
+            // Create a summary message
+            message = `${prefix}${dataType} (${itemCount} items, ${lineCount} lines)`;
+            
+            // Store the full formatted structure in metadata as raw
+            metadata = {
+                ...metadata,
+                raw: fullMessage
+            };
+        }
 
         const event: LogEvent = {
             identifier: this.currentEvent.identifier,
             timestamp: this.currentEvent.timestamp || new Date().toISOString(),
             scope: this.currentEvent.scope || 'OTHER',
             severity: this.currentEvent.severity || 'OTHER',
-            message: fullMessage,
-            metadata: this.currentEvent.metadata,
+            message: message,
+            metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
             rawLines: [...this.buffer]
         };
 
