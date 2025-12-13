@@ -63,14 +63,22 @@ export class LogParser {
     /**
      * Parse main log line
      * Format: WCCOActrl    (4), 2025.11.16 18:56:26.972, CTRL, WARNING,     5, this is a warning
+     * Format: WCCILdataSQLite(0), 2025.12.13 21:08:09.655, SYS,  INFO,        4, Connected
      */
     private parseMainLine(line: string): Partial<LogEvent> | null {
-        // Regex: IDENTIFIER + (NUM), + TIMESTAMP, + SCOPE, + SEVERITY, + MSGNUM, + MESSAGE
-        const regex = /^(\w+)\s+\((\d+)\),\s+(\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3}),\s+(\w+),\s+(\w+),\s+(.+)$/;
-        const match = line.match(regex);
+        // Trim the line first to handle any leading/trailing whitespace
+        const trimmedLine = line.trim();
+        
+        // Regex: IDENTIFIER + optional spaces + (NUM), + TIMESTAMP, + SCOPE, + SEVERITY, + MSGNUM, + MESSAGE
+        // Note: \s* instead of \s+ before ( to handle both "WCCOActrl    (0)" and "WCCILdataSQLite(0)"
+        const regex = /^(\w+)\s*\((\d+)\),\s+(\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3}),\s+(\w+),\s+(\w+),\s+(.+)$/;
+        const match = trimmedLine.match(regex);
 
         if (!match) {
-            ExtensionOutputChannel.trace('LogParser', `Failed to parse as main line: ${line.substring(0, 50)}...`);
+            // Only log if line looks like it could be PVSS format but didn't match
+            if (trimmedLine.includes('(') && trimmedLine.includes(')') && trimmedLine.includes(',')) {
+                ExtensionOutputChannel.debug('LogParser', `Failed to parse potential PVSS line: "${trimmedLine.substring(0, 80)}..."`);
+            }
             return null;
         }
 

@@ -172,20 +172,24 @@ export class LogFileWatcher {
 
                 ExtensionOutputChannel.debug('LogFileWatcher', `Read ${lines.length} new lines from ${fileName} (${currentSize - lastPosition} bytes)`);
 
-                if (fileName === 'PVSS_II.log') {
-                    // Get or create parser for this file using the canonical key
+                // Detect parser type: Use LogParser if first line matches PVSS_II format
+                // Format: IDENTIFIER (NUM), YYYY.MM.DD HH:mm:ss.SSS, SCOPE, SEVERITY, MSGNUM, MESSAGE
+                const usePVSSParser = lines.length > 0 && this.isPVSSFormat(lines[0]);
+                
+                if (usePVSSParser) {
+                    // Get or create LogParser for this file using the canonical key
                     let parser = this.parsers.get(key);
-                    if (!parser) {
+                    if (!parser || parser instanceof GenericLogParser) {
                         parser = new LogParser();
                         this.parsers.set(key, parser);
                         ExtensionOutputChannel.trace('LogFileWatcher', `Created new PVSS_II parser for: ${fileName}`);
                     }
 
-                    // Parse PVSS_II.log with proper parser
+                    // Parse with PVSS_II parser
                     let eventCount = 0;
                     for (const line of lines) {
                         if (line.trim()) {
-                            const events = parser.parseLine(line);
+                            const events = (parser as LogParser).parseLine(line);
                             events.forEach((event: LogEvent) => {
                                 this.emitEvent(event);
                                 eventCount++;
@@ -193,11 +197,11 @@ export class LogFileWatcher {
                         }
                     }
 
-                    ExtensionOutputChannel.debug('LogFileWatcher', `Processed PVSS_II.log: ${lines.length} lines, ${eventCount} events`);
+                    ExtensionOutputChannel.debug('LogFileWatcher', `Processed ${fileName} with PVSS parser: ${lines.length} lines, ${eventCount} events`);
                 } else {
                     // Other log files: use GenericLogParser for multi-line support
                     let parser = this.parsers.get(key);
-                    if (!parser) {
+                    if (!parser || parser instanceof LogParser) {
                         parser = new GenericLogParser(fileName);
                         this.parsers.set(key, parser);
                         ExtensionOutputChannel.trace('LogFileWatcher', `Created new GenericLogParser for: ${fileName}`);
@@ -206,7 +210,7 @@ export class LogFileWatcher {
                     let eventCount = 0;
                     for (const line of lines) {
                         if (line.trim()) {
-                            const events = parser.parseLine(line);
+                            const events = (parser as GenericLogParser).parseLine(line);
                             events.forEach((event: LogEvent) => {
                                 this.emitEvent(event);
                                 eventCount++;
@@ -214,7 +218,7 @@ export class LogFileWatcher {
                         }
                     }
                     
-                    ExtensionOutputChannel.debug('LogFileWatcher', `Processed ${fileName}: ${lines.length} lines, ${eventCount} events`);
+                    ExtensionOutputChannel.debug('LogFileWatcher', `Processed ${fileName} with generic parser: ${lines.length} lines, ${eventCount} events`);
                 }
 
                 // Update position using canonical key
@@ -228,6 +232,18 @@ export class LogFileWatcher {
         } catch (error) {
             ExtensionOutputChannel.error('LogFileWatcher', `Error handling file change: ${path.basename(filePath)}`, error as Error);
         }
+    }
+
+    /**
+     * Check if a line matches PVSS_II log format
+     * Format: IDENTIFIER (NUM), YYYY.MM.DD HH:mm:ss.SSS, SCOPE, SEVERITY, MSGNUM, MESSAGE
+     * Format: WCCILdataSQLite(0), ... or WCCOActrl    (0), ...
+     */
+    private isPVSSFormat(line: string): boolean {
+        // Regex: IDENTIFIER + optional spaces + (NUM), + TIMESTAMP, + SCOPE, + SEVERITY, + rest
+        // Note: \s* instead of \s+ to handle both formats with and without spaces before (
+        const regex = /^\w+\s*\(\d+\),\s+\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3},\s+\w+,\s+\w+,\s+/;
+        return regex.test(line.trim());
     }
 
     /**
