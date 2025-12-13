@@ -70,7 +70,7 @@ export function generateMockLogEvent(severity?: LogSeverity): LogEvent {
   // Choose appropriate message
   let message = '';
   switch (actualSeverity) {
-    case 'ERROR':
+    case 'FATAL':
     case 'SEVERE':
       message = errorMessages[Math.floor(Math.random() * errorMessages.length)];
       break;
@@ -97,7 +97,7 @@ export function generateMockLogEvent(severity?: LogSeverity): LogEvent {
     `${identifier.padEnd(12)} (${managerNum}), ${timestamp}, ${scope.padEnd(5)}, ${actualSeverity.padEnd(7)}, ${msgNum}, ${message}`
   ];
   
-  if (rand > 0.75 && (actualSeverity === 'ERROR' || actualSeverity === 'SEVERE')) {
+  if (rand > 0.75 && (actualSeverity === 'FATAL' || actualSeverity === 'SEVERE')) {
     // Case 1: Script + Library + Line + Stacktrace (like the example)
     const scriptPath = repoPaths[Math.floor(Math.random() * repoPaths.length)];
     const scriptLine = Math.floor(Math.random() * 100) + 1;
@@ -198,7 +198,7 @@ export function generateMockLogEvents(count: number): LogEvent[] {
     } else if (rand < 0.8) {
       severity = 'WARNING';
     } else if (rand < 0.92) {
-      severity = 'ERROR';
+      severity = 'FATAL';
     } else if (rand < 0.97) {
       severity = 'SEVERE';
     } else {

@@ -63,14 +63,23 @@ export class LogParser {
     /**
      * Parse main log line
      * Format: WCCOActrl    (4), 2025.11.16 18:56:26.972, CTRL, WARNING,     5, this is a warning
+     * Format: WCCILdataSQLite(0), 2025.12.13 21:08:09.655, SYS,  INFO,        4, Connected
+     * Format: WCCOActrl    (2), 2025.12.13 21:12:36.581, PARAM,WARNING,     3/ctrl, Library
      */
     private parseMainLine(line: string): Partial<LogEvent> | null {
-        // Regex: IDENTIFIER + (NUM), + TIMESTAMP, + SCOPE, + SEVERITY, + MSGNUM, + MESSAGE
-        const regex = /^(\w+)\s+\((\d+)\),\s+(\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3}),\s+(\w+),\s+(\w+),\s+(.+)$/;
-        const match = line.match(regex);
+        // Trim the line first to handle any leading/trailing whitespace
+        const trimmedLine = line.trim();
+        
+        // Regex: IDENTIFIER + optional spaces + (NUM), + TIMESTAMP, + SCOPE, + SEVERITY, + MSGNUM, + MESSAGE
+        // Note: \s* instead of \s+ to handle missing spaces ("PARAM,WARNING" and "WCCILdataSQLite(0)")
+        const regex = /^(\w+)\s*\((\d+)\),\s+(\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3}),\s*(\w+),\s*(\w+),\s+(.+)$/;
+        const match = trimmedLine.match(regex);
 
         if (!match) {
-            ExtensionOutputChannel.trace('LogParser', `Failed to parse as main line: ${line.substring(0, 50)}...`);
+            // Only log if line looks like it could be PVSS format but didn't match
+            if (trimmedLine.includes('(') && trimmedLine.includes(')') && trimmedLine.includes(',')) {
+                ExtensionOutputChannel.debug('LogParser', `Failed to parse potential PVSS line: "${trimmedLine.substring(0, 80)}..."`);
+            }
             return null;
         }
 
@@ -169,6 +178,20 @@ export class LogParser {
             return;
         }
 
+        // Parse Line on separate line (format: ", Line 2" after Script metadata)
+        // This happens when Script is on previous line and Line follows with comma prefix
+        if (trimmed.match(/^,\s*Line\s+(\d+)/i)) {
+            const lineMatch = trimmed.match(/^,\s*Line\s+(\d+)/i);
+            if (lineMatch && this.currentEvent.metadata.script) {
+                // We have script from previous line, now set the line number
+                this.currentEvent.metadata.library = this.currentEvent.metadata.script;
+                this.currentEvent.metadata.line = parseInt(lineMatch[1], 10);
+                // Clear script since we moved it to library
+                delete this.currentEvent.metadata.script;
+            }
+            return;
+        }
+
         // Everything else goes to raw
         if (trimmed.length > 0 && !trimmed.startsWith('Script:') && !trimmed.startsWith('Library:') && !trimmed.startsWith('Line:')) {
             if (!this.currentEvent.metadata.raw) {
@@ -220,7 +243,8 @@ export class LogParser {
             case 'WARNING':
                 return 'WARNING';
             case 'ERROR':
-                return 'ERROR';
+            case 'FATAL':
+                return 'FATAL';
             case 'SEVERE':
                 return 'SEVERE';
             case 'DEBUG':
@@ -272,4 +296,172 @@ export function parseGenericLogLine(line: string, fileName: string): LogEvent | 
         },
         rawLines: [line]
     };
+}
+
+/**
+ * Parser for generic log files (non-PVSS_II.log)
+ * Handles multi-line log entries based on:
+ * 1. Lines starting with tab or whitespace belong to previous message
+ * 2. Bracket matching: [ ] groups belong together
+ */
+export class GenericLogParser {
+    private buffer: string[] = [];
+    private currentEvent: Partial<LogEvent> | null = null;
+    private bracketDepth = 0;
+    private fileName: string;
+
+    constructor(fileName: string) {
+        this.fileName = fileName;
+    }
+
+    /**
+     * Parse a single line and return completed events
+     */
+    public parseLine(line: string): LogEvent[] {
+        const completedEvents: LogEvent[] = [];
+
+        // Check if this is a continuation line (starts with tab or multiple spaces)
+        const isContinuation = /^[\t ]/.test(line);
+
+        // Count brackets in current line
+        const openBrackets = (line.match(/\[/g) || []).length;
+        const closeBrackets = (line.match(/\]/g) || []).length;
+
+        if (this.currentEvent && (isContinuation || this.bracketDepth > 0)) {
+            // This line belongs to the current event
+            this.buffer.push(line);
+            this.bracketDepth += openBrackets - closeBrackets;
+
+            // If brackets are balanced and we're not in continuation, complete the event
+            if (this.bracketDepth === 0 && !isContinuation) {
+                const completed = this.finalizeEvent();
+                if (completed) {
+                    completedEvents.push(completed);
+                }
+            }
+        } else {
+            // This is a new main line
+            // First, complete previous event if exists
+            if (this.currentEvent) {
+                const completed = this.finalizeEvent();
+                if (completed) {
+                    completedEvents.push(completed);
+                }
+            }
+
+            // Start new event
+            this.currentEvent = this.parseGenericLine(line);
+            this.buffer = [line];
+            this.bracketDepth = openBrackets - closeBrackets;
+        }
+
+        return completedEvents;
+    }
+
+    /**
+     * Finalize and return any remaining event in buffer
+     */
+    public flush(): LogEvent | null {
+        if (this.currentEvent) {
+            return this.finalizeEvent();
+        }
+        return null;
+    }
+
+    /**
+     * Parse a generic log line (extract identifier and message)
+     * Format: IDENTIFIER:MESSAGE or just MESSAGE
+     */
+    private parseGenericLine(line: string): Partial<LogEvent> {
+        // Use filename (without .log) as identifier
+        const identifier = this.fileName.replace(/\.log$/i, '');
+        
+        // Try to extract identifier from format: "WCCOActrl2:["message"]"
+        const identifierMatch = line.match(/^(\w+):\s*(.*)$/);
+        
+        if (identifierMatch) {
+            const [, lineIdentifier, message] = identifierMatch;
+            return {
+                identifier: lineIdentifier.trim(),
+                timestamp: new Date().toISOString(),
+                scope: 'OTHER',
+                severity: 'OTHER',
+                message: message.trim(),
+                metadata: {},
+                rawLines: []
+            };
+        }
+
+        // Fallback: use filename as identifier, entire line as message
+        return {
+            identifier: identifier,
+            timestamp: new Date().toISOString(),
+            scope: 'OTHER',
+            severity: 'OTHER',
+            message: line.trim(),
+            metadata: {},
+            rawLines: []
+        };
+    }
+
+    /**
+     * Finalize current event
+     */
+    private finalizeEvent(): LogEvent | null {
+        if (!this.currentEvent || !this.currentEvent.identifier) {
+            this.currentEvent = null;
+            this.buffer = [];
+            this.bracketDepth = 0;
+            return null;
+        }
+
+        // Combine all buffered lines into message
+        const fullMessage = this.buffer.join('\n');
+        
+        // Check if this is a complex data structure (dyn_anytype, dyn_string, etc.)
+        // Pattern can be anywhere in first line: ["text"][dyn_string 4 items
+        const firstLine = this.buffer[0];
+        const dataTypeMatch = firstLine.match(/\[(dyn_[\w_]+)\s+(\d+)\s+items?/i);
+        
+        let message = fullMessage;
+        let metadata = this.currentEvent.metadata || {};
+        
+        if (dataTypeMatch && this.buffer.length > 2) {
+            // This is a complex data structure
+            const [, dataType, itemCount] = dataTypeMatch;
+            const lineCount = this.buffer.length;
+            
+            // Check if there's a prefix before the data structure
+            const prefixMatch = firstLine.match(/^(.*?)\[(dyn_[\w_]+)/);
+            let prefix = '';
+            if (prefixMatch && prefixMatch[1].trim()) {
+                prefix = prefixMatch[1].trim() + ' ';
+            }
+            
+            // Create a summary message
+            message = `${prefix}${dataType} (${itemCount} items, ${lineCount} lines)`;
+            
+            // Store the full formatted structure in metadata as raw
+            metadata = {
+                ...metadata,
+                raw: fullMessage
+            };
+        }
+
+        const event: LogEvent = {
+            identifier: this.currentEvent.identifier,
+            timestamp: this.currentEvent.timestamp || new Date().toISOString(),
+            scope: this.currentEvent.scope || 'OTHER',
+            severity: this.currentEvent.severity || 'OTHER',
+            message: message,
+            metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+            rawLines: [...this.buffer]
+        };
+
+        this.currentEvent = null;
+        this.buffer = [];
+        this.bracketDepth = 0;
+
+        return event;
+    }
 }

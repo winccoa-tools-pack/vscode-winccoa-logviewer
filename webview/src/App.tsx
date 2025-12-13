@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { LogEvent, LogSeverity } from './types/logEvent';
 import { generateMockLogEvents } from './utils/mockData';
 import {
@@ -64,6 +64,9 @@ function App() {
   const [selectedLogFiles, setSelectedLogFiles] = useState<Set<string>>(new Set());
   const [logFileSearch, setLogFileSearch] = useState('');
   const [newestFirst, setNewestFirst] = useState(true); // Default: newest logs at top
+  const [autoExpandAll, setAutoExpandAll] = useState(false); // Default: only expand SEVERE
+  const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set()); // Track expanded logs by unique key
+  const logListRef = useRef<HTMLDivElement>(null); // Ref for auto-scroll
 
   // Toggle pause state and notify extension
   const togglePause = () => {
@@ -123,7 +126,7 @@ function App() {
   };
   const [searchTerm, setSearchTerm] = useState('');
   const [severityFilter, setSeverityFilter] = useState<Set<LogSeverity>>(
-    new Set(['DEBUG', 'INFO', 'WARNING', 'ERROR', 'SEVERE', 'OTHER'])
+    new Set(['DEBUG', 'INFO', 'WARNING', 'FATAL', 'SEVERE', 'OTHER'])
   );
   const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>({
     identifier: true,
@@ -211,6 +214,19 @@ function App() {
         case 'newLogEvent':
           // Add new log event to the top
           setAllLogs(prev => [message.event, ...prev]);
+          // Auto-expand logs based on settings
+          const shouldExpandNew = autoExpandAll
+            ? (message.event.metadata?.raw || message.event.metadata?.stacktrace)
+            : (message.event.severity === 'SEVERE' && (message.event.metadata?.raw || message.event.metadata?.stacktrace));
+          
+          if (shouldExpandNew) {
+            const logKey = `${message.event.identifier}-${message.event.timestamp}-0`;
+            setExpandedLogs(prev => {
+              const newSet = new Set(prev);
+              newSet.add(logKey);
+              return newSet;
+            });
+          }
           break;
         case 'availableLogFiles':
           // Receive available log files from backend
@@ -273,6 +289,40 @@ function App() {
     return newestFirst ? filtered : [...filtered].reverse();
   }, [allLogs, severityFilter, searchTerm, selectedLogFiles, availableLogFiles, newestFirst]);
 
+  // Auto-expand SEVERE logs when filteredLogs change
+  useEffect(() => {
+    filteredLogs.forEach((log, index) => {
+      const shouldExpand = autoExpandAll 
+        ? (log.metadata?.raw || log.metadata?.stacktrace) // Expand all with metadata
+        : (log.severity === 'SEVERE' && (log.metadata?.raw || log.metadata?.stacktrace)); // Only SEVERE
+      
+      if (shouldExpand) {
+        const logKey = `${log.identifier}-${log.timestamp}-${index}`;
+        setExpandedLogs(prev => {
+          if (!prev.has(logKey)) {
+            const newSet = new Set(prev);
+            newSet.add(logKey);
+            return newSet;
+          }
+          return prev;
+        });
+      }
+    });
+  }, [filteredLogs, autoExpandAll]);
+
+  // Auto-scroll to bottom when new logs arrive and newestFirst is false
+  useEffect(() => {
+    if (logListRef.current) {
+      if (newestFirst) {
+        // Scroll to top when newest logs are at top
+        logListRef.current.scrollTop = 0;
+      } else {
+        // Scroll to bottom when newest logs are at bottom
+        logListRef.current.scrollTop = logListRef.current.scrollHeight;
+      }
+    }
+  }, [filteredLogs.length, newestFirst]);
+
   const handleClear = () => {
     setAllLogs([]);
   };
@@ -332,7 +382,7 @@ function App() {
   const getSeverityColor = (severity: LogSeverity) => {
     switch (severity) {
       case 'SEVERE': return 'var(--severity-severe)';
-      case 'ERROR': return 'var(--severity-error)';
+      case 'FATAL': return 'var(--severity-error)';
       case 'WARNING': return 'var(--severity-warning)';
       case 'INFO': return 'var(--severity-info)';
       case 'DEBUG': return 'var(--severity-debug)';
@@ -345,7 +395,7 @@ function App() {
     
     switch (severity) {
       case 'SEVERE': return 'var(--severity-severe-bg)';
-      case 'ERROR': return 'var(--severity-error-bg)';
+      case 'FATAL': return 'var(--severity-error-bg)';
       case 'WARNING': return 'var(--severity-warning-bg)';
       case 'INFO': return 'var(--severity-info-bg)';
       case 'DEBUG': return 'var(--severity-debug-bg)';
@@ -355,11 +405,28 @@ function App() {
 
   const formatTime = (timestamp: string) => {
     if (!timestamp) return '-';
+    
     // Parse WinCC OA format: 2025.11.16 18:56:26.972
     const parts = timestamp.split(' ');
     if (parts.length === 2) {
       return parts[1]; // Return time portion
     }
+    
+    // Parse ISO format: 2025-12-13T18:56:26.972Z
+    try {
+      const date = new Date(timestamp);
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleTimeString('en-GB', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit',
+          fractionalSecondDigits: 3
+        });
+      }
+    } catch (e) {
+      // Fallback: return as-is
+    }
+    
     return timestamp;
   };
 
@@ -385,7 +452,7 @@ function App() {
         {/* Severity Filter - linksbündig */}
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ fontSize: '11px', fontWeight: 600, opacity: 0.7, width: '48px' }}>FILTER:</span>
-          {(['DEBUG', 'INFO', 'WARNING', 'ERROR', 'SEVERE', 'OTHER'] as LogSeverity[]).map(severity => (
+          {(['DEBUG', 'INFO', 'WARNING', 'FATAL', 'SEVERE', 'OTHER'] as LogSeverity[]).map(severity => (
             <button
               key={severity}
               onClick={() => toggleSeverity(severity)}
@@ -520,6 +587,41 @@ function App() {
                       }}
                     />
                     <span>New Logs at Top</span>
+                  </div>
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAutoExpandAll(!autoExpandAll);
+                    }}
+                    style={{
+                      padding: '6px 8px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '13px',
+                      borderRadius: '2px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--vscode-menu-selectionBackground)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={autoExpandAll}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        setAutoExpandAll(!autoExpandAll);
+                      }}
+                      style={{
+                        cursor: 'pointer',
+                        accentColor: 'var(--vscode-focusBorder)'
+                      }}
+                    />
+                    <span>Auto-Expand All Logs</span>
                   </div>
                   <div
                     style={{
@@ -785,12 +887,15 @@ function App() {
       )}
 
       {/* Log List */}
-      <div style={{ 
-        flex: 1, 
-        overflow: 'auto', 
-        padding: '8px',
-        backgroundColor: 'var(--vscode-editor-background)'
-      }}>
+      <div 
+        ref={logListRef}
+        style={{ 
+          flex: 1, 
+          overflow: 'auto', 
+          padding: '8px',
+          backgroundColor: 'var(--vscode-editor-background)'
+        }}
+      >
         {filteredLogs.length === 0 && (
           <div style={{ 
             textAlign: 'center', 
@@ -814,7 +919,22 @@ function App() {
                 borderRadius: '2px',
                 backgroundColor: 'var(--vscode-editor-background)',
                 transition: 'background-color 0.1s',
-                cursor: 'pointer'
+                cursor: log.metadata && (log.metadata.raw || log.metadata.stacktrace) ? 'pointer' : 'default'
+              }}
+              onClick={() => {
+                // Toggle expand/collapse if metadata exists
+                if (log.metadata && (log.metadata.raw || log.metadata.stacktrace)) {
+                  const logKey = `${log.identifier}-${log.timestamp}-${index}`;
+                  setExpandedLogs(prev => {
+                    const newSet = new Set(prev);
+                    if (newSet.has(logKey)) {
+                      newSet.delete(logKey);
+                    } else {
+                      newSet.add(logKey);
+                    }
+                    return newSet;
+                  });
+                }
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = 'var(--vscode-list-hoverBackground)';
@@ -876,10 +996,27 @@ function App() {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 500, marginBottom: '4px' }}>
                       {log.message}
+                      {/* Expand/Collapse indicator for metadata */}
+                      {log.metadata && (log.metadata.raw || log.metadata.stacktrace) && (() => {
+                        const logKey = `${log.identifier}-${log.timestamp}-${index}`;
+                        return (
+                          <span 
+                            style={{
+                              marginLeft: '8px',
+                              opacity: 0.6,
+                              fontSize: '12px',
+                              userSelect: 'none'
+                            }}
+                            title={expandedLogs.has(logKey) ? 'Collapse details' : 'Expand details'}
+                          >
+                            {expandedLogs.has(logKey) ? '▼' : '▶'}
+                          </span>
+                        );
+                      })()}
                     </div>
                     
-                    {/* Metadata Display */}
-                    {log.metadata && (
+                    {/* Metadata Display - only if expanded */}
+                    {log.metadata && expandedLogs.has(`${log.identifier}-${log.timestamp}-${index}`) && (
                       <div style={{ 
                         fontSize: '11px', 
                         fontFamily: 'var(--vscode-editor-font-family)',
@@ -902,7 +1039,10 @@ function App() {
                               cursor: 'pointer',
                               color: 'var(--color-link)'
                             }}
-                            onClick={() => handleFileClick(log.metadata!.library!, log.metadata!.line)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleFileClick(log.metadata!.library!, log.metadata!.line);
+                            }}
                             onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
                             onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
                           >
@@ -933,7 +1073,10 @@ function App() {
                                   cursor: 'pointer',
                                   color: 'var(--color-link)'
                                 }}
-                                onClick={() => handleFileClick(entry.filePath, entry.line)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleFileClick(entry.filePath, entry.line);
+                                }}
                                 onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
                                 onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
                               >
@@ -948,7 +1091,19 @@ function App() {
                         
                         {/* Raw text */}
                         {log.metadata.raw && (
-                          <div style={{ marginTop: '4px', color: 'var(--color-comment)', fontStyle: 'italic' }}>
+                          <div style={{ 
+                            marginTop: '4px', 
+                            color: 'var(--color-comment)', 
+                            fontFamily: 'monospace',
+                            fontSize: '11px',
+                            whiteSpace: 'pre',
+                            backgroundColor: 'var(--vscode-editor-background)',
+                            padding: '8px',
+                            borderRadius: '4px',
+                            overflowX: 'auto',
+                            maxHeight: '400px',
+                            overflowY: 'auto'
+                          }}>
                             {log.metadata.raw}
                           </div>
                         )}
