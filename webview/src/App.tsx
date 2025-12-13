@@ -64,6 +64,7 @@ function App() {
   const [selectedLogFiles, setSelectedLogFiles] = useState<Set<string>>(new Set());
   const [logFileSearch, setLogFileSearch] = useState('');
   const [newestFirst, setNewestFirst] = useState(true); // Default: newest logs at top
+  const [autoExpandAll, setAutoExpandAll] = useState(false); // Default: only expand SEVERE
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set()); // Track expanded logs by unique key
 
   // Toggle pause state and notify extension
@@ -212,8 +213,12 @@ function App() {
         case 'newLogEvent':
           // Add new log event to the top
           setAllLogs(prev => [message.event, ...prev]);
-          // Auto-expand SEVERE logs
-          if (message.event.severity === 'SEVERE' && (message.event.metadata?.raw || message.event.metadata?.stacktrace)) {
+          // Auto-expand logs based on settings
+          const shouldExpandNew = autoExpandAll
+            ? (message.event.metadata?.raw || message.event.metadata?.stacktrace)
+            : (message.event.severity === 'SEVERE' && (message.event.metadata?.raw || message.event.metadata?.stacktrace));
+          
+          if (shouldExpandNew) {
             const logKey = `${message.event.identifier}-${message.event.timestamp}-0`;
             setExpandedLogs(prev => {
               const newSet = new Set(prev);
@@ -286,7 +291,11 @@ function App() {
   // Auto-expand SEVERE logs when filteredLogs change
   useEffect(() => {
     filteredLogs.forEach((log, index) => {
-      if (log.severity === 'SEVERE' && (log.metadata?.raw || log.metadata?.stacktrace)) {
+      const shouldExpand = autoExpandAll 
+        ? (log.metadata?.raw || log.metadata?.stacktrace) // Expand all with metadata
+        : (log.severity === 'SEVERE' && (log.metadata?.raw || log.metadata?.stacktrace)); // Only SEVERE
+      
+      if (shouldExpand) {
         const logKey = `${log.identifier}-${log.timestamp}-${index}`;
         setExpandedLogs(prev => {
           if (!prev.has(logKey)) {
@@ -298,7 +307,7 @@ function App() {
         });
       }
     });
-  }, [filteredLogs]);
+  }, [filteredLogs, autoExpandAll]);
 
   const handleClear = () => {
     setAllLogs([]);
@@ -564,6 +573,41 @@ function App() {
                       }}
                     />
                     <span>New Logs at Top</span>
+                  </div>
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAutoExpandAll(!autoExpandAll);
+                    }}
+                    style={{
+                      padding: '6px 8px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '13px',
+                      borderRadius: '2px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--vscode-menu-selectionBackground)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={autoExpandAll}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        setAutoExpandAll(!autoExpandAll);
+                      }}
+                      style={{
+                        cursor: 'pointer',
+                        accentColor: 'var(--vscode-focusBorder)'
+                      }}
+                    />
+                    <span>Auto-Expand All Logs</span>
                   </div>
                   <div
                     style={{
