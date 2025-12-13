@@ -355,11 +355,28 @@ function App() {
 
   const formatTime = (timestamp: string) => {
     if (!timestamp) return '-';
+    
     // Parse WinCC OA format: 2025.11.16 18:56:26.972
     const parts = timestamp.split(' ');
     if (parts.length === 2) {
       return parts[1]; // Return time portion
     }
+    
+    // Parse ISO format: 2025-12-13T18:56:26.972Z
+    try {
+      const date = new Date(timestamp);
+      if (!isNaN(date.getTime())) {
+        return date.toLocaleTimeString('en-GB', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit',
+          fractionalSecondDigits: 3
+        });
+      }
+    } catch (e) {
+      // Fallback: return as-is
+    }
+    
     return timestamp;
   };
 
