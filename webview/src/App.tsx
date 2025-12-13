@@ -63,6 +63,7 @@ function App() {
   const [availableLogFiles, setAvailableLogFiles] = useState<string[]>([]);
   const [selectedLogFiles, setSelectedLogFiles] = useState<Set<string>>(new Set());
   const [logFileSearch, setLogFileSearch] = useState('');
+  const [newestFirst, setNewestFirst] = useState(true); // Default: newest logs at top
 
   // Toggle pause state and notify extension
   const togglePause = () => {
@@ -241,7 +242,7 @@ function App() {
 
   // Gefilterte und gesuchte Logs
   const filteredLogs = useMemo(() => {
-    return allLogs.filter(log => {
+    const filtered = allLogs.filter(log => {
       // Log file filter (based on identifier or source file)
       if (selectedLogFiles.size > 0) {
         // Check if log's identifier or source matches selected files
@@ -267,7 +268,10 @@ function App() {
       
       return true;
     });
-  }, [allLogs, severityFilter, searchTerm, selectedLogFiles, availableLogFiles]);
+    
+    // Apply log order: if newestFirst is false, reverse the array
+    return newestFirst ? filtered : [...filtered].reverse();
+  }, [allLogs, severityFilter, searchTerm, selectedLogFiles, availableLogFiles, newestFirst]);
 
   const handleClear = () => {
     setAllLogs([]);
@@ -485,6 +489,45 @@ function App() {
                     minWidth: '180px'
                   }}
                 >
+                  <div
+                    onClick={() => setNewestFirst(!newestFirst)}
+                    style={{
+                      padding: '6px 8px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      borderRadius: '2px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--vscode-menu-selectionBackground)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={newestFirst}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        setNewestFirst(!newestFirst);
+                      }}
+                      style={{
+                        cursor: 'pointer',
+                        accentColor: 'var(--vscode-focusBorder)'
+                      }}
+                    />
+                    <span>New Logs at Top</span>
+                  </div>
+                  <div
+                    style={{
+                      height: '1px',
+                      backgroundColor: 'var(--vscode-menu-separatorBackground)',
+                      margin: '4px 0'
+                    }}
+                  />
                   <div
                     onClick={handleOpenSettings}
                     style={{
