@@ -358,34 +358,33 @@ export class GenericLogParser {
      * Format: IDENTIFIER:MESSAGE or just MESSAGE
      */
     private parseGenericLine(line: string): Partial<LogEvent> {
+        // Use filename (without .log) as identifier
+        const identifier = this.fileName.replace(/\.log$/i, '');
+        
         // Try to extract identifier from format: "WCCOActrl2:["message"]"
         const identifierMatch = line.match(/^(\w+):\s*(.*)$/);
         
         if (identifierMatch) {
-            const [, identifier, message] = identifierMatch;
+            const [, lineIdentifier, message] = identifierMatch;
             return {
-                identifier: identifier.trim(),
+                identifier: lineIdentifier.trim(),
                 timestamp: new Date().toISOString(),
                 scope: 'OTHER',
                 severity: 'OTHER',
                 message: message.trim(),
-                metadata: {
-                    raw: `From: ${this.fileName}`
-                },
+                metadata: {},
                 rawLines: []
             };
         }
 
-        // Fallback: treat entire line as message
+        // Fallback: use filename as identifier, entire line as message
         return {
-            identifier: 'GENERIC',
+            identifier: identifier,
             timestamp: new Date().toISOString(),
             scope: 'OTHER',
             severity: 'OTHER',
             message: line.trim(),
-            metadata: {
-                raw: `From: ${this.fileName}`
-            },
+            metadata: {},
             rawLines: []
         };
     }
