@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Detailed logging across all components for better diagnostics
 - Auto-show output channel on errors
 - Timestamp and source information in log messages
+- Configurable log display order with "New Logs at Top" checkbox in settings dropdown
 
 ### Changed
 - Replaced simple logger with unified ExtensionOutputChannel (matching ctrllang extension)
