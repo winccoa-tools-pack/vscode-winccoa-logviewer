@@ -1,5 +1,5 @@
 import { LogEvent, LogSeverity, LogMetadata, StacktraceEntry } from './logEvent';
-import { logger } from './logger';
+import { ExtensionOutputChannel } from './extensionOutput';
 
 /**
  * Parses WinCC OA PVSS_II.log format
@@ -33,11 +33,7 @@ export class LogParser {
                 const completed = this.finalizeEvent();
                 if (completed) {
                     completedEvents.push(completed);
-                    logger.debug('Completed log event', { 
-                        identifier: completed.identifier, 
-                        severity: completed.severity,
-                        hasMetadata: !!completed.metadata 
-                    });
+                    ExtensionOutputChannel.trace('LogParser', `Completed log event: ${completed.identifier} - ${completed.severity}`);
                 }
             }
 
@@ -74,7 +70,7 @@ export class LogParser {
         const match = line.match(regex);
 
         if (!match) {
-            logger.debug('Failed to parse as main line', { linePreview: line.substring(0, 50) });
+            ExtensionOutputChannel.trace('LogParser', `Failed to parse as main line: ${line.substring(0, 50)}...`);
             return null;
         }
 
@@ -188,6 +184,7 @@ export class LogParser {
      */
     private finalizeEvent(): LogEvent | null {
         if (!this.currentEvent || !this.currentEvent.identifier) {
+            ExtensionOutputChannel.trace('LogParser', 'Cannot finalize event: missing identifier');
             this.currentEvent = null;
             this.buffer = [];
             return null;

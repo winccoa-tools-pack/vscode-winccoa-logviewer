@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { LogFileWatcher } from './logFileWatcher';
 import { LogEvent } from './logEvent';
-import { logger } from './logger';
+import { ExtensionOutputChannel } from './extensionOutput';
 
 export class LogViewerPanel {
     public static currentPanel: LogViewerPanel | undefined;
@@ -14,7 +14,7 @@ export class LogViewerPanel {
 
     // ---------- Factory ----------
     public static createOrShow(extensionUri: vscode.Uri, logPath?: string) {
-        logger.info('createOrShow called', { logPath, hasCurrentPanel: !!LogViewerPanel.currentPanel });
+        ExtensionOutputChannel.debug('LogViewerPanel', `createOrShow called with logPath: ${logPath}`);
         
         // Always open in a new column to the side
         let column: vscode.ViewColumn;
@@ -39,19 +39,19 @@ export class LogViewerPanel {
 
         // Wenn es schon ein Panel gibt → nur zeigen
         if (LogViewerPanel.currentPanel) {
-            logger.info('Reusing existing panel', { column });
+            ExtensionOutputChannel.debug('LogViewerPanel', `Reusing existing panel in column ${column}`);
             LogViewerPanel.currentPanel._panel.reveal(column);
             
             // If new logPath provided, update watcher
             if (logPath) {
-                logger.info('Updating watcher with new log path', { logPath });
+                ExtensionOutputChannel.info('LogViewerPanel', `Updating watcher with new log path: ${logPath}`);
                 LogViewerPanel.currentPanel.startWatching(logPath);
             }
             return;
         }
 
         // Neues Panel erzeugen
-        logger.info('Creating new webview panel', { column });
+        ExtensionOutputChannel.info('LogViewerPanel', `Creating new webview panel in column ${column}`);
         const panel = vscode.window.createWebviewPanel(
             'winccoaLogViewer',
             'WinCC OA Log Viewer',
@@ -69,7 +69,7 @@ export class LogViewerPanel {
     }
 
     private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, logPath?: string) {
-        logger.debug('LogViewerPanel constructor', { logPath });
+        ExtensionOutputChannel.trace('LogViewerPanel', `Constructor called with logPath: ${logPath}`);
         this._panel = panel;
         this._extensionUri = extensionUri;
 
@@ -80,24 +80,24 @@ export class LogViewerPanel {
         // Message Handler für File-Clicks
         this._panel.webview.onDidReceiveMessage(
             message => {
-                logger.debug('Received webview message', { command: message.command });
+                ExtensionOutputChannel.trace('LogViewerPanel', `Received webview message: ${message.command}`);
                 switch (message.command) {
                     case 'openFile':
                         this._openFile(message.filePath, message.line);
                         return;
                     case 'ready':
-                        logger.info('Webview ready');
+                        ExtensionOutputChannel.info('LogViewerPanel', 'Webview ready');
                         // Webview is ready, start watching if logPath provided
                         if (logPath) {
                             this.startWatching(logPath);
                         }
                         return;
                     case 'setPaused':
-                        logger.info('Setting paused state', { paused: message.paused });
+                        ExtensionOutputChannel.debug('LogViewerPanel', `Setting paused state: ${message.paused}`);
                         this.setPaused(message.paused);
                         return;
                     case 'openSettings':
-                        logger.info('Opening extension settings');
+                        ExtensionOutputChannel.debug('LogViewerPanel', 'Opening extension settings');
                         this._openSettings();
                         return;
                 }
@@ -111,7 +111,7 @@ export class LogViewerPanel {
      * Set paused state of the watcher
      */
     public setPaused(paused: boolean): void {
-        logger.info('setPaused', { paused, hasWatcher: !!this._watcher });
+        ExtensionOutputChannel.debug('LogViewerPanel', `setPaused: ${paused}, hasWatcher: ${!!this._watcher}`);
         if (this._watcher) {
             if (paused) {
                 this._watcher.pause();
@@ -125,17 +125,17 @@ export class LogViewerPanel {
      * Start watching log directory
      */
     public async startWatching(logPath: string): Promise<void> {
-        logger.info('Starting to watch log directory', { logPath });
+        ExtensionOutputChannel.info('LogViewerPanel', `Starting to watch log directory: ${logPath}`);
         
         // Check if already watching this path
         if (this._currentLogPath === logPath && this._watcher) {
-            logger.debug('Already watching this path', { logPath });
+            ExtensionOutputChannel.debug('LogViewerPanel', `Already watching path: ${logPath}`);
             return;
         }
         
         // Stop existing watcher if any
         if (this._watcher) {
-            logger.debug('Stopping existing watcher');
+            ExtensionOutputChannel.debug('LogViewerPanel', 'Stopping existing watcher');
             this._watcher.stop();
         }
 
@@ -154,23 +154,23 @@ export class LogViewerPanel {
             
             // Send available log files to webview
             const availableFiles = this._watcher.getAvailableLogFiles();
-            logger.debug('Sending available log files to webview', { count: availableFiles.length });
+            ExtensionOutputChannel.debug('LogViewerPanel', `Sending ${availableFiles.length} log files to webview`);
             this._panel.webview.postMessage({
                 command: 'availableLogFiles',
                 files: availableFiles
             });
             
-            logger.info('Successfully started watching logs', { logPath });
+            ExtensionOutputChannel.success('LogViewerPanel', `Successfully started watching logs: ${logPath}`);
             vscode.window.showInformationMessage(`Watching logs in: ${logPath}`);
         } catch (error) {
             this._currentLogPath = undefined;
-            logger.error('Failed to start watching logs', error, { logPath });
+            ExtensionOutputChannel.error('LogViewerPanel', `Failed to start watching logs: ${logPath}`, error as Error);
             vscode.window.showErrorMessage(`Failed to watch logs: ${error}`);
         }
     }
 
     private async _openFile(filePath: string, line?: number) {
-        logger.info('Opening file from log', { filePath, line });
+        ExtensionOutputChannel.info('LogViewerPanel', `Opening file: ${filePath}${line ? `:${line}` : ''}`);
         try {
             // Versuche die Datei zu öffnen
             const uri = vscode.Uri.file(filePath);
@@ -189,9 +189,9 @@ export class LogViewerPanel {
                     vscode.TextEditorRevealType.InCenter
                 );
             }
-            logger.info('Successfully opened file', { filePath, line });
+            ExtensionOutputChannel.debug('LogViewerPanel', `Successfully opened file: ${filePath}`);
         } catch (error) {
-            logger.error('Failed to open file', error, { filePath, line });
+            ExtensionOutputChannel.error('LogViewerPanel', `Failed to open file: ${filePath}`, error as Error);
             vscode.window.showErrorMessage(`Could not open file: ${filePath}`);
         }
     }
@@ -200,7 +200,7 @@ export class LogViewerPanel {
      * Open extension settings
      */
     private _openSettings() {
-        logger.info('Opening settings for winccoaLogviewer');
+        ExtensionOutputChannel.debug('LogViewerPanel', 'Opening settings for winccoaLogviewer');
         vscode.commands.executeCommand('workbench.action.openSettings', 'winccoaLogviewer');
     }
 
@@ -250,12 +250,12 @@ export class LogViewerPanel {
     }
 
     public dispose() {
-        logger.info('Disposing LogViewerPanel');
+        ExtensionOutputChannel.info('LogViewerPanel', 'Disposing LogViewerPanel');
         LogViewerPanel.currentPanel = undefined;
 
         // Stop watcher
         if (this._watcher) {
-            logger.debug('Disposing watcher');
+            ExtensionOutputChannel.debug('LogViewerPanel', 'Disposing watcher');
             this._watcher.dispose();
             this._watcher = undefined;
         }
@@ -268,6 +268,6 @@ export class LogViewerPanel {
                 disposable.dispose();
             }
         }
-        logger.debug('LogViewerPanel disposed');
+        ExtensionOutputChannel.debug('LogViewerPanel', 'LogViewerPanel disposed');
     }
 }

@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { LogParser, parseGenericLogLine } from './logParser';
 import { LogEvent } from './logEvent';
-import { logger } from './logger';
+import { ExtensionOutputChannel } from './extensionOutput';
 
 export class LogFileWatcher {
     private watcher: vscode.FileSystemWatcher | undefined;
@@ -24,14 +24,14 @@ export class LogFileWatcher {
      * Get list of available log files
      */
     public getAvailableLogFiles(): string[] {
-        logger.debug('Getting available log files', { logPath: this.logPath });
+        ExtensionOutputChannel.trace('LogFileWatcher', `Getting available log files from: ${this.logPath}`);
         try {
             const files = fs.readdirSync(this.logPath);
             const logFiles = files.filter(file => file.endsWith('.log'));
-            logger.info('Found log files', { count: logFiles.length, files: logFiles });
+            ExtensionOutputChannel.debug('LogFileWatcher', `Found ${logFiles.length} log files`);
             return logFiles;
         } catch (error) {
-            logger.error('Error getting available log files', error, { logPath: this.logPath });
+            ExtensionOutputChannel.error('LogFileWatcher', `Error getting available log files from: ${this.logPath}`, error as Error);
             return [];
         }
     }
@@ -40,14 +40,14 @@ export class LogFileWatcher {
      * Start watching the log directory
      */
     public async start(): Promise<void> {
-        logger.info('LogFileWatcher starting', { logPath: this.logPath });
+        ExtensionOutputChannel.info('LogFileWatcher', `Starting watcher for: ${this.logPath}`);
         
         // Initialize file positions to current size (skip existing content)
         await this.initializeFilePositions();
         
         // Mark as initialized BEFORE creating the watcher
         this.isInitialized = true;
-        logger.debug('File positions initialized, creating file watcher');
+        ExtensionOutputChannel.debug('LogFileWatcher', 'File positions initialized, creating file watcher');
 
         // Create file system watcher for all log files
         const pattern = new vscode.RelativePattern(this.logPath, '*.log');
@@ -71,7 +71,7 @@ export class LogFileWatcher {
         try {
             // Get all .log files in the directory
             const files = fs.readdirSync(this.logPath);
-            logger.debug('Initializing file positions', { logPath: this.logPath, fileCount: files.length });
+            ExtensionOutputChannel.trace('LogFileWatcher', `Initializing file positions for ${files.length} files`);
 
             for (const file of files) {
                 if (file.endsWith('.log')) {
@@ -82,13 +82,13 @@ export class LogFileWatcher {
                         const resolved = path.resolve(filePath);
                         const key = resolved.toLowerCase();
                         this.filePositions.set(key, stats.size);
-                        logger.debug('Initialized file position', { file: resolved, key, size: stats.size });
+                        ExtensionOutputChannel.trace('LogFileWatcher', `Initialized position for ${file}: ${stats.size} bytes`);
                     }
                 }
             }
-            logger.info('File positions initialized', { totalFiles: this.filePositions.size });
+            ExtensionOutputChannel.info('LogFileWatcher', `File positions initialized for ${this.filePositions.size} files`);
         } catch (error) {
-            logger.error('Error initializing file positions', error, { logPath: this.logPath });
+            ExtensionOutputChannel.error('LogFileWatcher', `Error initializing file positions: ${this.logPath}`, error as Error);
             // Rethrow so caller can react if needed
             throw error;
         }
@@ -98,7 +98,7 @@ export class LogFileWatcher {
      * Pause watching (stop processing new events)
      */
     public pause(): void {
-        logger.info('Pausing log watcher');
+        ExtensionOutputChannel.info('LogFileWatcher', 'Pausing log watcher');
         this.isPaused = true;
     }
 
@@ -106,7 +106,7 @@ export class LogFileWatcher {
      * Resume watching (continue processing new events)
      */
     public resume(): void {
-        logger.info('Resuming log watcher');
+        ExtensionOutputChannel.info('LogFileWatcher', 'Resuming log watcher');
         this.isPaused = false;
     }
 
@@ -116,7 +116,7 @@ export class LogFileWatcher {
     private async handleFileChange(filePath: string): Promise<void> {
         // Ignore events until initialization is complete
         if (!this.isInitialized) {
-            logger.debug('Ignoring file change before initialization', { filePath });
+            ExtensionOutputChannel.trace('LogFileWatcher', `Ignoring file change before initialization: ${path.basename(filePath)}`);
             return;
         }
 
@@ -133,23 +133,23 @@ export class LogFileWatcher {
             // initialization missed it or paths differ in casing/format.
             if (!this.filePositions.has(key)) {
                 this.filePositions.set(key, currentSize);
-                logger.debug('First-seen file, initializing position', { file: resolvedPath, size: currentSize });
+                ExtensionOutputChannel.debug('LogFileWatcher', `First-seen file, initializing position: ${path.basename(resolvedPath)} (${currentSize} bytes)`);
                 return;
             }
 
             const lastPosition = this.filePositions.get(key) || 0;
 
-            logger.debug('File change detected', { file: path.basename(resolvedPath), currentSize, lastPosition });
+            ExtensionOutputChannel.trace('LogFileWatcher', `File change detected: ${path.basename(resolvedPath)}, size: ${currentSize}, last: ${lastPosition}`);
 
             // Only read if file grew
             if (currentSize <= lastPosition) {
-                logger.debug('File did not grow, skipping', { file: path.basename(resolvedPath) });
+                ExtensionOutputChannel.trace('LogFileWatcher', `File did not grow, skipping: ${path.basename(resolvedPath)}`);
                 return;
             }
 
             // If paused, just update position without processing
             if (this.isPaused) {
-                logger.debug('Watcher paused, updating position only', { file: path.basename(resolvedPath) });
+                ExtensionOutputChannel.trace('LogFileWatcher', `Watcher paused, updating position only: ${path.basename(resolvedPath)}`);
                 this.filePositions.set(key, currentSize);
                 return;
             }
@@ -170,7 +170,7 @@ export class LogFileWatcher {
                 const lines = buffer.split(/\r?\n/).filter(line => line.length > 0);
                 const fileName = path.basename(resolvedPath);
 
-                logger.debug('Read new content', { file: fileName, lines: lines.length, bytes: currentSize - lastPosition });
+                ExtensionOutputChannel.debug('LogFileWatcher', `Read ${lines.length} new lines from ${fileName} (${currentSize - lastPosition} bytes)`);
 
                 if (fileName === 'PVSS_II.log') {
                     // Get or create parser for this file using the canonical key
@@ -178,7 +178,7 @@ export class LogFileWatcher {
                     if (!parser) {
                         parser = new LogParser();
                         this.parsers.set(key, parser);
-                        logger.debug('Created new parser', { file: resolvedPath });
+                        ExtensionOutputChannel.trace('LogFileWatcher', `Created new parser for: ${fileName}`);
                     }
 
                     // Parse PVSS_II.log with proper parser
@@ -193,7 +193,7 @@ export class LogFileWatcher {
                         }
                     }
 
-                    logger.debug('Processed PVSS_II.log', { lines: lines.length, events: eventCount });
+                    ExtensionOutputChannel.debug('LogFileWatcher', `Processed PVSS_II.log: ${lines.length} lines, ${eventCount} events`);
                 } else {
                     // Other log files: emit as generic events
                     let eventCount = 0;
@@ -206,7 +206,7 @@ export class LogFileWatcher {
                             }
                         }
                     }
-                    logger.debug('Processed generic log file', { file: fileName, lines: lines.length, events: eventCount });
+                    ExtensionOutputChannel.debug('LogFileWatcher', `Processed ${fileName}: ${lines.length} lines, ${eventCount} events`);
                 }
 
                 // Update position using canonical key
@@ -214,11 +214,11 @@ export class LogFileWatcher {
             });
 
             stream.on('error', (error) => {
-                logger.error('Error reading file stream', error, { file: resolvedPath });
+                ExtensionOutputChannel.error('LogFileWatcher', `Error reading file stream: ${path.basename(resolvedPath)}`, error);
             });
 
         } catch (error) {
-            logger.error('Error handling file change', error, { file: filePath });
+            ExtensionOutputChannel.error('LogFileWatcher', `Error handling file change: ${path.basename(filePath)}`, error as Error);
         }
     }
 
@@ -235,7 +235,7 @@ export class LogFileWatcher {
      * Stop watching
      */
     public stop(): void {
-        logger.info('Stopping log watcher');
+        ExtensionOutputChannel.info('LogFileWatcher', 'Stopping log watcher');
         this.isInitialized = false;
         if (this.watcher) {
             this.watcher.dispose();
@@ -243,7 +243,7 @@ export class LogFileWatcher {
         }
         this.filePositions.clear();
         this.parsers.clear(); // Clear all parsers
-        logger.debug('Log watcher stopped');
+        ExtensionOutputChannel.debug('LogFileWatcher', 'Log watcher stopped');
     }
 
     /**
