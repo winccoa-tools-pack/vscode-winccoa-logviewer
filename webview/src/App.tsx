@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import type { LogEvent, LogSeverity } from './types/logEvent';
 import { generateMockLogEvents } from './utils/mockData';
 import {
@@ -66,6 +66,7 @@ function App() {
   const [newestFirst, setNewestFirst] = useState(true); // Default: newest logs at top
   const [autoExpandAll, setAutoExpandAll] = useState(false); // Default: only expand SEVERE
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set()); // Track expanded logs by unique key
+  const logListRef = useRef<HTMLDivElement>(null); // Ref for auto-scroll
 
   // Toggle pause state and notify extension
   const togglePause = () => {
@@ -308,6 +309,19 @@ function App() {
       }
     });
   }, [filteredLogs, autoExpandAll]);
+
+  // Auto-scroll to bottom when new logs arrive and newestFirst is false
+  useEffect(() => {
+    if (logListRef.current) {
+      if (newestFirst) {
+        // Scroll to top when newest logs are at top
+        logListRef.current.scrollTop = 0;
+      } else {
+        // Scroll to bottom when newest logs are at bottom
+        logListRef.current.scrollTop = logListRef.current.scrollHeight;
+      }
+    }
+  }, [filteredLogs.length, newestFirst]);
 
   const handleClear = () => {
     setAllLogs([]);
@@ -873,12 +887,15 @@ function App() {
       )}
 
       {/* Log List */}
-      <div style={{ 
-        flex: 1, 
-        overflow: 'auto', 
-        padding: '8px',
-        backgroundColor: 'var(--vscode-editor-background)'
-      }}>
+      <div 
+        ref={logListRef}
+        style={{ 
+          flex: 1, 
+          overflow: 'auto', 
+          padding: '8px',
+          backgroundColor: 'var(--vscode-editor-background)'
+        }}
+      >
         {filteredLogs.length === 0 && (
           <div style={{ 
             textAlign: 'center', 
