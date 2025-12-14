@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2025-12-14
+
 ### Added
 - Structured logging system with ExtensionOutputChannel
 - Configurable log levels: ERROR, WARN, INFO, DEBUG, TRACE
@@ -22,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Parsing support for comma-prefixed line metadata (", Line 2" format)
 - GenericLogParser now uses log filename as identifier instead of "GENERIC"
 - Bidirectional auto-scroll based on log display order
+- Comprehensive test case documentation for all log format variations
 
 ### Changed
 - Replaced simple logger with unified ExtensionOutputChannel (matching ctrllang extension)
@@ -35,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PVSS logs no longer incorrectly merge multi-line events
 - Generic logs properly separate individual log entries with bracket depth tracking
 - Metadata display now correctly shows Script/Line information from comma-prefixed format
+- Script field in expanded metadata is now clickable and opens files at correct line
 
 ## [0.1.0] - Initial Release
 
