@@ -1039,9 +1039,22 @@ function App() {
                       }}>
                         {/* Script/Library/Line Info */}
                         {log.metadata.script && (
-                          <div style={{ marginBottom: '2px' }}>
+                          <div 
+                            style={{ 
+                              marginBottom: '2px',
+                              cursor: 'pointer',
+                              color: 'var(--color-link)'
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleFileClick(log.metadata!.script!, log.metadata!.line);
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+                            onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+                          >
                             <span style={{ color: 'var(--color-keyword)', marginRight: '4px' }}>Script:</span>
                             <span>{log.metadata.script}</span>
+                            {log.metadata.line && <span>:{log.metadata.line}</span>}
                           </div>
                         )}
                         {log.metadata.library && (
