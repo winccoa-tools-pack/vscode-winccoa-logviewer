@@ -194,6 +194,18 @@ function App() {
     return null;
   };
 
+  // Check if log has metadata that should be displayed when expanded
+  const hasExpandableMetadata = (log: LogEvent): boolean => {
+    if (!log.metadata) return false;
+    return !!(
+      log.metadata.raw ||
+      log.metadata.stacktrace?.length ||
+      log.metadata.script ||
+      log.metadata.library ||
+      log.metadata.line
+    );
+  };
+
   // Listen for messages from extension
   useEffect(() => {
     if (!vscode) {
@@ -216,8 +228,8 @@ function App() {
           setAllLogs(prev => [message.event, ...prev]);
           // Auto-expand logs based on settings
           const shouldExpandNew = autoExpandAll
-            ? (message.event.metadata?.raw || message.event.metadata?.stacktrace)
-            : (message.event.severity === 'SEVERE' && (message.event.metadata?.raw || message.event.metadata?.stacktrace));
+            ? hasExpandableMetadata(message.event)
+            : (message.event.severity === 'SEVERE' && hasExpandableMetadata(message.event));
           
           if (shouldExpandNew) {
             const logKey = `${message.event.identifier}-${message.event.timestamp}-0`;
@@ -293,8 +305,8 @@ function App() {
   useEffect(() => {
     filteredLogs.forEach((log, index) => {
       const shouldExpand = autoExpandAll 
-        ? (log.metadata?.raw || log.metadata?.stacktrace) // Expand all with metadata
-        : (log.severity === 'SEVERE' && (log.metadata?.raw || log.metadata?.stacktrace)); // Only SEVERE
+        ? hasExpandableMetadata(log) // Expand all with metadata
+        : (log.severity === 'SEVERE' && hasExpandableMetadata(log)); // Only SEVERE
       
       if (shouldExpand) {
         const logKey = `${log.identifier}-${log.timestamp}-${index}`;
@@ -919,11 +931,11 @@ function App() {
                 borderRadius: '2px',
                 backgroundColor: 'var(--vscode-editor-background)',
                 transition: 'background-color 0.1s',
-                cursor: log.metadata && (log.metadata.raw || log.metadata.stacktrace) ? 'pointer' : 'default'
+                cursor: hasExpandableMetadata(log) ? 'pointer' : 'default'
               }}
               onClick={() => {
                 // Toggle expand/collapse if metadata exists
-                if (log.metadata && (log.metadata.raw || log.metadata.stacktrace)) {
+                if (hasExpandableMetadata(log)) {
                   const logKey = `${log.identifier}-${log.timestamp}-${index}`;
                   setExpandedLogs(prev => {
                     const newSet = new Set(prev);
@@ -997,7 +1009,7 @@ function App() {
                     <div style={{ fontWeight: 500, marginBottom: '4px' }}>
                       {log.message}
                       {/* Expand/Collapse indicator for metadata */}
-                      {log.metadata && (log.metadata.raw || log.metadata.stacktrace) && (() => {
+                      {hasExpandableMetadata(log) && (() => {
                         const logKey = `${log.identifier}-${log.timestamp}-${index}`;
                         return (
                           <span 

@@ -187,7 +187,7 @@ export class LogParser {
                 this.currentEvent.metadata.library = this.currentEvent.metadata.script;
                 this.currentEvent.metadata.line = parseInt(lineMatch[1], 10);
                 // Clear script since we moved it to library
-                delete this.currentEvent.metadata.script;
+                this.currentEvent.metadata.script = undefined;
             }
             return;
         }
