@@ -3,7 +3,7 @@
   "displayName": "WinCC OA LogViewer",
   "description": "LogViewer for WinCC OA - View and analyze log files in real-time",
   "publisher": "RichardJanisch",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "author": "winccoa-tools-pack",
   "license": "MIT",
   "icon": "resources/logviewer_industrial_calm_128.png",
@@ -12,10 +12,13 @@
     "url": "https://github.com/winccoa-tools-pack/vscode-winccoa-logviewer"
   },
   "engines": {
-    "vscode": "^1.80.0"
+    "vscode": "^1.106.2"
   },
   "categories": [
     "Other"
+  ],
+  "extensionDependencies": [
+    "winccoa-tools-pack.winccoa-core"
   ],
   "activationEvents": [
     "onCommand:winccoa-logviewer.open"
@@ -47,12 +50,12 @@
         },
         "winccoaLogviewer.logPathSource": {
           "type": "string",
-          "enum": ["static", "workspace", "npm-package"],
+          "enum": ["static", "workspace", "automatic"],
           "default": "workspace",
           "enumDescriptions": [
             "Use a static path configured in settings",
             "Derive path from workspace root (workspace/log)",
-            "Get path from WinCC OA project info npm package (when available)"
+            "Automatically detect from selected WinCC OA project (requires Core extension)"
           ],
           "description": "How to determine the log directory path"
         },
