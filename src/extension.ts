@@ -31,6 +31,9 @@ export function activate(context: vscode.ExtensionContext) {
     
     ExtensionOutputChannel.info('Extension', 'WinCC OA LogViewer Extension activated');
 
+    // Setup Core extension integration if in automatic mode
+    setupCoreExtensionIntegration(context);
+
     // Watch for configuration changes
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration(e => {
@@ -42,6 +45,9 @@ export function activate(context: vscode.ExtensionContext) {
             if (e.affectsConfiguration('winccoaLogviewer.logPathSource') || 
                 e.affectsConfiguration('winccoaLogviewer.staticLogPath')) {
                 ExtensionOutputChannel.info('Configuration', 'Log path configuration changed');
+                
+                // Re-setup Core integration when mode changes
+                setupCoreExtensionIntegration(context);
                 
                 // If panel is open, update it with new path
                 if (LogViewerPanel.currentPanel) {
@@ -79,6 +85,66 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(openLogViewerCommand);
     
     // Note: Logger disposal is handled by output channel subscription
+}
+
+async function setupCoreExtensionIntegration(context: vscode.ExtensionContext) {
+    const config = vscode.workspace.getConfiguration('winccoaLogviewer');
+    const logPathSource = config.get<string>('logPathSource', 'workspace');
+
+    if (logPathSource !== 'automatic') {
+        ExtensionOutputChannel.debug('CoreIntegration', 'Not in automatic mode - Core extension integration disabled');
+        return;
+    }
+
+    const coreExtension = vscode.extensions.getExtension('winccoa-tools-pack.winccoa-core');
+    
+    if (!coreExtension) {
+        ExtensionOutputChannel.warn('CoreIntegration', 'WinCC OA Core extension not found - automatic mode unavailable');
+        return;
+    }
+
+    if (!coreExtension.isActive) {
+        ExtensionOutputChannel.debug('CoreIntegration', 'Activating Core extension...');
+        await coreExtension.activate();
+    }
+
+    const coreApi = coreExtension.exports;
+    
+    // Subscribe to project changes
+    coreApi.onDidChangeProject((project: any) => {
+        if (project) {
+            const projectDir = project.projectDir.replace(/[\/]+$/, ''); // Remove trailing slashes
+            const logPath = `${projectDir}/log`;
+            ExtensionOutputChannel.info('CoreIntegration', `Project changed: ${project.name} → Log path: ${logPath}`);
+            
+            // Validate path before updating panel
+            if (!PathResolver.validatePath(logPath)) {
+                ExtensionOutputChannel.error('CoreIntegration', `Invalid log path: ${logPath}`);
+                return;
+            }
+            
+            // If panel is open, update it with new log path
+            if (LogViewerPanel.currentPanel) {
+                ExtensionOutputChannel.debug('CoreIntegration', `Updating active panel with new log path`);
+                LogViewerPanel.currentPanel.startWatching(logPath);
+            }
+        } else {
+            ExtensionOutputChannel.info('CoreIntegration', 'No project selected');
+        }
+    });
+
+    const currentProject = coreApi.getCurrentProject();
+    if (currentProject) {
+        const projectDir = currentProject.projectDir.replace(/[\/]+$/, ''); // Remove trailing slashes
+        const logPath = `${projectDir}/log`;
+        ExtensionOutputChannel.info('CoreIntegration', `Current project: ${currentProject.name} → Log path: ${logPath}`);
+        
+        if (!PathResolver.validatePath(logPath)) {
+            ExtensionOutputChannel.warn('CoreIntegration', `Log directory does not exist: ${logPath}`);
+        }
+    } else {
+        ExtensionOutputChannel.debug('CoreIntegration', 'No project currently selected');
+    }
 }
 
 export function deactivate() {
