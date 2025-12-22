@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { ExtensionOutputChannel } from './extensionOutput';
 
-export type LogPathSource = 'static' | 'workspace' | 'npm-package';
+export type LogPathSource = 'static' | 'workspace' | 'automatic';
 
 /**
  * Resolves the log directory path based on configuration
@@ -23,8 +23,8 @@ export class PathResolver {
                 return this.getStaticPath();
             case 'workspace':
                 return this.getWorkspacePath();
-            case 'npm-package':
-                return this.getNpmPackagePath();
+            case 'automatic':
+                return this.getAutomaticPath();
             default:
                 ExtensionOutputChannel.warn('PathResolver', `Unknown log path source: ${source}, falling back to workspace`);
                 return this.getWorkspacePath();
@@ -95,15 +95,48 @@ export class PathResolver {
     }
 
     /**
-     * Get log path from npm package
-     * TODO: Implement when npm package is available
+     * Get log path from Core extension (automatic mode)
      */
-    private static getNpmPackagePath(): string | undefined {
-        ExtensionOutputChannel.warn('PathResolver', 'npm-package path source not yet implemented');
-        vscode.window.showWarningMessage(
-            'WinCC OA LogViewer: NPM package integration is not yet available. Please use "static" or "workspace" path source for now.'
-        );
-        return undefined;
+    private static getAutomaticPath(): string | undefined {
+        const coreExtension = vscode.extensions.getExtension('winccoa-tools-pack.winccoa-core');
+        
+        if (!coreExtension) {
+            ExtensionOutputChannel.error('PathResolver', 'WinCC OA Core extension not found');
+            vscode.window.showErrorMessage(
+                'WinCC OA Core extension is required for automatic mode. Please install it or switch to a different path source.',
+            );
+            return undefined;
+        }
+
+        if (!coreExtension.isActive) {
+            ExtensionOutputChannel.warn('PathResolver', 'Core extension is not active yet');
+            return undefined;
+        }
+
+        const coreApi = coreExtension.exports;
+        const currentProject = coreApi.getCurrentProject();
+
+        if (!currentProject) {
+            ExtensionOutputChannel.warn('PathResolver', 'No WinCC OA project selected in Core extension');
+            vscode.window.showWarningMessage(
+                'No WinCC OA project selected. Please select a project using the WinCC OA status bar.',
+            );
+            return undefined;
+        }
+
+        const projectDir = currentProject.projectDir.replace(/[\/]+$/, ''); // Remove trailing slashes
+        const logPath = `${projectDir}/log`;
+        
+        if (!fs.existsSync(logPath)) {
+            ExtensionOutputChannel.warn('PathResolver', `Log directory does not exist: ${logPath}`);
+            vscode.window.showWarningMessage(
+                `Log directory does not exist for project "${currentProject.name}": ${logPath}`,
+            );
+            return undefined;
+        }
+
+        ExtensionOutputChannel.debug('PathResolver', `Automatic mode - Project: ${currentProject.name}, Log path: ${logPath}`);
+        return logPath;
     }
 
     /**
