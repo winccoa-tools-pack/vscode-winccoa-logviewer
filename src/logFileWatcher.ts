@@ -42,14 +42,7 @@ export class LogFileWatcher {
     public async start(): Promise<void> {
         ExtensionOutputChannel.info('LogFileWatcher', `Starting watcher for: ${this.logPath}`);
         
-        // Initialize file positions to current size (skip existing content)
-        await this.initializeFilePositions();
-        
-        // Mark as initialized BEFORE creating the watcher
-        this.isInitialized = true;
-        ExtensionOutputChannel.debug('LogFileWatcher', 'File positions initialized, creating file watcher');
-
-        // Create file system watcher for all log files
+        // Create file system watcher FIRST (but don't mark initialized yet)
         const pattern = new vscode.RelativePattern(this.logPath, '*.log');
         this.watcher = vscode.workspace.createFileSystemWatcher(pattern);
 
@@ -62,6 +55,13 @@ export class LogFileWatcher {
         this.watcher.onDidCreate(async (uri) => {
             await this.handleFileChange(uri.fsPath);
         });
+        
+        // Initialize file positions to current size (skip existing content)
+        await this.initializeFilePositions();
+        
+        // Mark as initialized AFTER everything is set up
+        this.isInitialized = true;
+        ExtensionOutputChannel.debug('LogFileWatcher', 'File watcher fully initialized and ready');
     }
 
     /**
@@ -128,13 +128,12 @@ export class LogFileWatcher {
             const stats = fs.statSync(resolvedPath);
             const currentSize = stats.size;
 
-            // If we never saw this file during initialization, set its position to current size
-            // and don't process older content. This avoids reading the whole file when
-            // initialization missed it or paths differ in casing/format.
+            // If we never saw this file during initialization, it's a newly created file
+            // Initialize position to 0 and process all content
             if (!this.filePositions.has(key)) {
-                this.filePositions.set(key, currentSize);
-                ExtensionOutputChannel.debug('LogFileWatcher', `First-seen file, initializing position: ${path.basename(resolvedPath)} (${currentSize} bytes)`);
-                return;
+                this.filePositions.set(key, 0);
+                ExtensionOutputChannel.debug('LogFileWatcher', `New file created after initialization: ${path.basename(resolvedPath)}, will read all content`);
+                // Continue processing with lastPosition = 0
             }
 
             const lastPosition = this.filePositions.get(key) || 0;

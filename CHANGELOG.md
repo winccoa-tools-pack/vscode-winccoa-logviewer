@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-12-25
+
+### Fixed
+- Fixed race condition where log events during initialization were ignored
+- Fixed issue where first log entries after starting the watcher were not displayed
+- File watcher now properly processes newly created log files from the beginning
+- Initialization order corrected: watcher is created before file positions are set
+- Eliminated need to run scripts multiple times to see log output
+
 ## [0.2.0] - TBD
 
 ### Added
