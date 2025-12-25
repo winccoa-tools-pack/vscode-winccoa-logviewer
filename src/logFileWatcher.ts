@@ -9,6 +9,7 @@ export class LogFileWatcher {
     private watcher: vscode.FileSystemWatcher | undefined;
     private parsers = new Map<string, LogParser | GenericLogParser>(); // Separate parser per file
     private filePositions = new Map<string, number>(); // Track read position for each file
+    private lineBuffers = new Map<string, string>(); // Buffer for incomplete lines per file
     private onNewEventCallback: ((event: LogEvent) => void) | undefined;
     private isPaused = false;
     private isInitialized = false; // Track if initialization is complete
@@ -165,11 +166,33 @@ export class LogFileWatcher {
             });
 
             stream.on('end', () => {
-                // Windows uses \r\n, split by both and filter empty
-                const lines = buffer.split(/\r?\n/).filter(line => line.length > 0);
                 const fileName = path.basename(resolvedPath);
+                
+                // Get any buffered incomplete line from previous read
+                const previousBuffer = this.lineBuffers.get(key) || '';
+                
+                // Prepend previous buffer to current buffer
+                const fullBuffer = previousBuffer + buffer;
+                
+                // Split into lines
+                const splitLines = fullBuffer.split(/\r?\n/);
+                
+                // Last element is either empty string (if ended with \n) or incomplete line
+                const incompleteLinePart = splitLines.pop() || '';
+                
+                // Store incomplete line for next read
+                if (incompleteLinePart.length > 0) {
+                    this.lineBuffers.set(key, incompleteLinePart);
+                    ExtensionOutputChannel.trace('LogFileWatcher', `Buffered incomplete line (${incompleteLinePart.length} chars) for ${fileName}`);
+                } else {
+                    // Clear buffer if line was complete
+                    this.lineBuffers.delete(key);
+                }
+                
+                // Filter out empty lines
+                const lines = splitLines.filter(line => line.length > 0);
 
-                ExtensionOutputChannel.debug('LogFileWatcher', `Read ${lines.length} new lines from ${fileName} (${currentSize - lastPosition} bytes)`);
+                ExtensionOutputChannel.debug('LogFileWatcher', `Read ${lines.length} complete lines from ${fileName} (${currentSize - lastPosition} bytes, ${previousBuffer.length > 0 ? 'had previous buffer' : 'no buffer'})`);
 
                 // Detect parser type: Use LogParser if first line matches PVSS_II format
                 // Format: IDENTIFIER (NUM), YYYY.MM.DD HH:mm:ss.SSS, SCOPE, SEVERITY, MSGNUM, MESSAGE
@@ -195,6 +218,15 @@ export class LogFileWatcher {
                             });
                         }
                     }
+                    
+                    // CRITICAL: Flush the parser to emit the last event in buffer
+                    // The parser is stateful and holds the last event until the next line arrives
+                    const lastEvent = (parser as LogParser).flush();
+                    if (lastEvent) {
+                        this.emitEvent(lastEvent);
+                        eventCount++;
+                        ExtensionOutputChannel.trace('LogFileWatcher', `Flushed final event from parser for ${fileName}`);
+                    }
 
                     ExtensionOutputChannel.debug('LogFileWatcher', `Processed ${fileName} with PVSS parser: ${lines.length} lines, ${eventCount} events`);
                 } else {
@@ -215,6 +247,14 @@ export class LogFileWatcher {
                                 eventCount++;
                             });
                         }
+                    }
+                    
+                    // CRITICAL: Flush the parser to emit the last event in buffer
+                    const lastEvent = (parser as GenericLogParser).flush();
+                    if (lastEvent) {
+                        this.emitEvent(lastEvent);
+                        eventCount++;
+                        ExtensionOutputChannel.trace('LogFileWatcher', `Flushed final event from parser for ${fileName}`);
                     }
                     
                     ExtensionOutputChannel.debug('LogFileWatcher', `Processed ${fileName} with generic parser: ${lines.length} lines, ${eventCount} events`);
@@ -266,6 +306,7 @@ export class LogFileWatcher {
             this.watcher = undefined;
         }
         this.filePositions.clear();
+        this.lineBuffers.clear(); // Clear line buffers
         this.parsers.clear(); // Clear all parsers
         ExtensionOutputChannel.debug('LogFileWatcher', 'Log watcher stopped');
     }

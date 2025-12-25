@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2] - 2025-12-26
+
+### Fixed
+- **Critical**: Fixed log lines appearing in wrong order due to stateful parser buffering
+- Parser now correctly flushes the last event from its internal buffer after processing all lines
+- Fixed issue where the last log line in each file change was only emitted on the next change
+- Resolved line reordering bug where last line appeared first in subsequent reads
+- All log events now appear in correct chronological order
+
 ## [0.2.1] - 2025-12-25
 
 ### Fixed

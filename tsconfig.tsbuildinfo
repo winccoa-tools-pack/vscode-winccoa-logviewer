@@ -1,0 +1,1 @@
+{"root":["./src/extension.ts","./src/extensionOutput.ts","./src/logEvent.ts","./src/logFileWatcher.ts","./src/logParser.ts","./src/logViewerPanel.ts","./src/pathResolver.ts","./src/test/runTest.ts","./src/test/suite/extension.test.ts","./src/test/suite/index.ts","./src/test/suite/logParser.test.ts"],"version":"5.9.3"}
