@@ -403,7 +403,7 @@ function App() {
   };
 
   const getSeverityBgColor = (severity: LogSeverity, isActive: boolean) => {
-    if (!isActive) return 'var(--vscode-button-secondaryBackground)';
+    if (!isActive) return 'transparent';
     
     switch (severity) {
       case 'SEVERE': return 'var(--severity-severe-bg)';
@@ -472,18 +472,18 @@ function App() {
                 padding: '4px 12px',
                 fontSize: '11px',
                 fontWeight: 600,
-                border: severityFilter.has(severity) ? `1px solid ${getSeverityColor(severity)}` : '1px solid transparent',
+                border: severityFilter.has(severity) ? `1px solid ${getSeverityColor(severity)}` : '1px solid var(--vscode-panel-border)',
                 borderRadius: '2px',
                 cursor: 'pointer',
                 backgroundColor: getSeverityBgColor(severity, severityFilter.has(severity)),
-                color: severityFilter.has(severity) ? getSeverityColor(severity) : '#858585',
+                color: severityFilter.has(severity) ? getSeverityColor(severity) : 'var(--vscode-button-secondaryForeground)',
                 transition: 'all 0.2s',
                 outline: 'none'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = severityFilter.has(severity) 
                   ? getSeverityBgColor(severity, true)
-                  : 'var(--vscode-button-secondaryHoverBackground)';
+                  : 'var(--vscode-list-hoverBackground)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.backgroundColor = getSeverityBgColor(severity, severityFilter.has(severity));
@@ -695,7 +695,7 @@ function App() {
           fontWeight: 600,
           opacity: 0.9,
           userSelect: 'none',
-          color: 'var(--vscode-button-secondaryForeground)'
+          color: 'var(--vscode-foreground)'
         }}
         onContextMenu={(e) => {
           e.preventDefault();

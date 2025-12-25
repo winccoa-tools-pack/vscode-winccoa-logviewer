@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.3] - 2025-12-26
+
+### Fixed
+- Fixed UI theming issues in light mode
+- Filter buttons now use transparent background when inactive for better light mode visibility
+- Column header text now uses correct foreground color (black in light mode, white in dark mode)
+- Improved button hover effects to work seamlessly in both light and dark themes
+
 ## [0.2.2] - 2025-12-26
 
 ### Fixed
