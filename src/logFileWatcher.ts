@@ -312,6 +312,154 @@ export class LogFileWatcher {
     }
 
     /**
+     * Get list of history files (PVSS_II*.log files with timestamps)
+     */
+    public getHistoryFiles(): { name: string; size: number; modified: Date; firstTimestamp?: string; lastTimestamp?: string }[] {
+        try {
+            const files = fs.readdirSync(this.logPath);
+            const historyFiles = files
+                .filter(file => file.startsWith('PVSS_II') && file.endsWith('.log'))
+                .map(file => {
+                    const filePath = path.join(this.logPath, file);
+                    const stats = fs.statSync(filePath);
+                    
+                    // Try to get first and last timestamp from file
+                    let firstTimestamp: string | undefined;
+                    let lastTimestamp: string | undefined;
+                    
+                    try {
+                        const content = fs.readFileSync(filePath, 'utf-8');
+                        const lines = content.split(/\r?\n/).filter(l => l.trim());
+                        
+                        // Extract timestamp from first PVSS line
+                        if (lines.length > 0) {
+                            const firstMatch = lines[0].match(/\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2}/);
+                            if (firstMatch) firstTimestamp = firstMatch[0];
+                        }
+                        
+                        // Extract timestamp from last PVSS line (search backwards)
+                        for (let i = lines.length - 1; i >= 0; i--) {
+                            const lastMatch = lines[i].match(/\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2}/);
+                            if (lastMatch) {
+                                lastTimestamp = lastMatch[0];
+                                break;
+                            }
+                        }
+                    } catch (e) {
+                        // Ignore read errors
+                    }
+                    
+                    return {
+                        name: file,
+                        size: stats.size,
+                        modified: stats.mtime,
+                        firstTimestamp,
+                        lastTimestamp
+                    };
+                })
+                .sort((a, b) => b.modified.getTime() - a.modified.getTime()); // Newest first
+            
+            ExtensionOutputChannel.debug('LogFileWatcher', `Found ${historyFiles.length} history files`);
+            return historyFiles;
+        } catch (error) {
+            ExtensionOutputChannel.error('LogFileWatcher', 'Error getting history files', error as Error);
+            return [];
+        }
+    }
+
+    /**
+     * Load history from a specific file with optional time range filter
+     * @param fileName The log file name (e.g., PVSS_II.log)
+     * @param fromTime Optional start time filter (ISO string)
+     * @param toTime Optional end time filter (ISO string)
+     * @returns Array of LogEvents
+     */
+    public async loadHistoryFile(
+        fileName: string, 
+        fromTime?: string, 
+        toTime?: string
+    ): Promise<LogEvent[]> {
+        const filePath = path.join(this.logPath, fileName);
+        ExtensionOutputChannel.info('LogFileWatcher', `Loading history from: ${fileName}, from: ${fromTime || 'start'}, to: ${toTime || 'end'}`);
+        
+        if (!fs.existsSync(filePath)) {
+            ExtensionOutputChannel.error('LogFileWatcher', `History file not found: ${filePath}`);
+            return [];
+        }
+
+        const events: LogEvent[] = [];
+        const fromDate = fromTime ? new Date(fromTime) : null;
+        const toDate = toTime ? new Date(toTime) : null;
+
+        try {
+            const content = fs.readFileSync(filePath, 'utf-8');
+            const lines = content.split(/\r?\n/).filter(line => line.trim());
+            
+            // Use a fresh parser for history loading
+            const parser = new LogParser();
+            
+            for (const line of lines) {
+                const parsedEvents = parser.parseLine(line);
+                for (const event of parsedEvents) {
+                    // Apply time filter if specified
+                    if (this.isEventInTimeRange(event, fromDate, toDate)) {
+                        events.push(event);
+                    }
+                }
+            }
+            
+            // Flush final event
+            const lastEvent = parser.flush();
+            if (lastEvent && this.isEventInTimeRange(lastEvent, fromDate, toDate)) {
+                events.push(lastEvent);
+            }
+            
+            ExtensionOutputChannel.info('LogFileWatcher', `Loaded ${events.length} events from history (${lines.length} lines)`);
+            return events;
+            
+        } catch (error) {
+            ExtensionOutputChannel.error('LogFileWatcher', `Error loading history file: ${fileName}`, error as Error);
+            return [];
+        }
+    }
+
+    /**
+     * Check if event timestamp is within the specified time range
+     */
+    private isEventInTimeRange(event: LogEvent, fromDate: Date | null, toDate: Date | null): boolean {
+        if (!fromDate && !toDate) return true;
+        
+        // Parse timestamp from event (format: "2025.12.29 14:30:45.123")
+        const eventDate = this.parseEventTimestamp(event.timestamp);
+        if (!eventDate) return true; // If can't parse, include it
+        
+        if (fromDate && eventDate < fromDate) return false;
+        if (toDate && eventDate > toDate) return false;
+        
+        return true;
+    }
+
+    /**
+     * Parse PVSS timestamp format to Date
+     */
+    private parseEventTimestamp(timestamp: string): Date | null {
+        // Format: "2025.12.29 14:30:45.123"
+        const match = timestamp.match(/(\d{4})\.(\d{2})\.(\d{2})\s+(\d{2}):(\d{2}):(\d{2})\.(\d{3})/);
+        if (!match) return null;
+        
+        const [, year, month, day, hour, min, sec, ms] = match;
+        return new Date(
+            parseInt(year),
+            parseInt(month) - 1,
+            parseInt(day),
+            parseInt(hour),
+            parseInt(min),
+            parseInt(sec),
+            parseInt(ms)
+        );
+    }
+
+    /**
      * Dispose resources
      */
     public dispose(): void {

@@ -63,6 +63,12 @@ interface PersistedState {
   severityFilter: LogSeverity[];
   columnVisibility: ColumnVisibility;
   columnWidths: ColumnWidths;
+  // History modal settings
+  historyFile?: string;
+  historyStartDate?: string;
+  historyStartTime?: string;
+  historyEndDate?: string;
+  historyEndTime?: string;
 }
 
 // Default values for persisted state
@@ -124,6 +130,54 @@ function App() {
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set()); // Track expanded logs by unique key
   const logListRef = useRef<HTMLDivElement>(null); // Ref for auto-scroll
 
+  // History Modal State
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyFiles, setHistoryFiles] = useState<{ name: string; size: number; modified: string; firstTimestamp?: string; lastTimestamp?: string }[]>([]);
+  const [selectedHistoryFile, setSelectedHistoryFile] = useState<string>('');
+  const [startDate, setStartDate] = useState<string>('');
+  const [startTime, setStartTime] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [endTime, setEndTime] = useState<string>('');
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyProgress, setHistoryProgress] = useState(0);
+
+  // Helper: Parse PVSS timestamp (YYYY.MM.DD HH:MM:SS.mmm) to date and time parts
+  const parsePvssTimestamp = (ts: string): { date: string; time: string } | null => {
+    if (!ts) return null;
+    const match = ts.match(/(\d{4})\.(\d{2})\.(\d{2})\s+(\d{2}):(\d{2})/);
+    if (!match) return null;
+    return {
+      date: `${match[1]}-${match[2]}-${match[3]}`, // YYYY-MM-DD for input type="date"
+      time: `${match[4]}:${match[5]}` // HH:MM for input type="time"
+    };
+  };
+
+  // Helper: Convert date + time back to PVSS format for backend
+  const toPvssFormat = (date: string, time: string): string => {
+    if (!date) return '';
+    // date is YYYY-MM-DD, time is HH:MM
+    const [y, m, d] = date.split('-');
+    return `${y}.${m}.${d} ${time || '00:00'}`;
+  };
+
+  // Handle history file selection change - update date/time pickers
+  const handleHistoryFileChange = (fileName: string) => {
+    setSelectedHistoryFile(fileName);
+    const file = historyFiles.find(f => f.name === fileName);
+    if (file) {
+      const startParsed = parsePvssTimestamp(file.firstTimestamp || '');
+      const endParsed = parsePvssTimestamp(file.lastTimestamp || '');
+      if (startParsed) {
+        setStartDate(startParsed.date);
+        setStartTime(startParsed.time);
+      }
+      if (endParsed) {
+        setEndDate(endParsed.date);
+        setEndTime(endParsed.time);
+      }
+    }
+  };
+
   // Toggle pause state and notify extension
   const togglePause = () => {
     const newPausedState = !isPaused;
@@ -145,6 +199,34 @@ function App() {
         command: 'openSettings'
       });
     }
+  };
+
+  // Open history modal
+  const handleOpenHistoryModal = () => {
+    setShowSettingsDropdown(false);
+    setShowHistoryModal(true);
+    // Request history files from extension
+    if (vscode) {
+      vscode.postMessage({ command: 'getHistoryFiles' });
+    }
+  };
+
+  // Load history from selected file
+  const handleLoadHistory = () => {
+    if (!selectedHistoryFile || !vscode) return;
+    
+    setHistoryLoading(true);
+    setHistoryProgress(0);
+    
+    const fromTime = toPvssFormat(startDate, startTime);
+    const toTime = toPvssFormat(endDate, endTime);
+    
+    vscode.postMessage({
+      command: 'loadHistory',
+      fileName: selectedHistoryFile,
+      fromTime: fromTime || undefined,
+      toTime: toTime || undefined
+    });
   };
 
   // Open log file selection modal
@@ -299,6 +381,54 @@ function App() {
             if (settings.severityFilter) setSeverityFilter(new Set(settings.severityFilter));
             if (settings.columnVisibility) setColumnVisibility(settings.columnVisibility);
             if (settings.columnWidths) setColumnWidths(settings.columnWidths);
+            // Restore history settings
+            if (settings.historyFile) setSelectedHistoryFile(settings.historyFile);
+            if (settings.historyStartDate) setStartDate(settings.historyStartDate);
+            if (settings.historyStartTime) setStartTime(settings.historyStartTime);
+            if (settings.historyEndDate) setEndDate(settings.historyEndDate);
+            if (settings.historyEndTime) setEndTime(settings.historyEndTime);
+          }
+          break;
+        case 'historyFiles':
+          // Receive list of available history files
+          setHistoryFiles(message.files);
+          if (message.files.length > 0) {
+            // Only auto-select first file if no persisted selection
+            setSelectedHistoryFile(prev => {
+              if (prev) return prev; // Keep persisted selection
+              const firstFile = message.files[0];
+              // Auto-fill date/time from file timestamps only for first-time
+              const startParsed = parsePvssTimestamp(firstFile.firstTimestamp || '');
+              const endParsed = parsePvssTimestamp(firstFile.lastTimestamp || '');
+              if (startParsed) {
+                setStartDate(d => d || startParsed.date);
+                setStartTime(t => t || startParsed.time);
+              }
+              if (endParsed) {
+                setEndDate(d => d || endParsed.date);
+                setEndTime(t => t || endParsed.time);
+              }
+              return firstFile.name;
+            });
+          }
+          break;
+        case 'historyEvents':
+          // Receive batch of history events
+          setAllLogs(prev => [...prev, ...message.events]);
+          setHistoryProgress(message.progress || 0);
+          break;
+        case 'historyLoading':
+          // History loading state changed
+          setHistoryLoading(message.loading);
+          if (!message.loading) {
+            setHistoryProgress(100);
+            if (message.totalEvents !== undefined) {
+              // Done loading - close modal after short delay
+              setTimeout(() => {
+                setShowHistoryModal(false);
+                setHistoryProgress(0);
+              }, 500);
+            }
           }
           break;
       }
@@ -321,10 +451,16 @@ function App() {
         severityFilter: Array.from(severityFilter),
         columnVisibility,
         columnWidths,
+        // History modal settings
+        historyFile: selectedHistoryFile,
+        historyStartDate: startDate,
+        historyStartTime: startTime,
+        historyEndDate: endDate,
+        historyEndTime: endTime,
       };
       vscode.postMessage({ command: 'saveSettings', settings });
     }
-  }, [newestFirst, autoExpandAll, selectedLogFiles, severityFilter, columnVisibility, columnWidths, vscode]);
+  }, [newestFirst, autoExpandAll, selectedLogFiles, severityFilter, columnVisibility, columnWidths, selectedHistoryFile, startDate, startTime, endDate, endTime, vscode]);
 
   // Simuliere neue Logs alle 3 Sekunden (nur im Dev-Mode wenn pausiert ist false)
   useEffect(() => {
@@ -577,6 +713,18 @@ function App() {
           {/* @ts-ignore */}
           <vscode-button onClick={handleClear} appearance="secondary" style={{ minWidth: '60px', height: '26px' }}>
             Clear
+          {/* @ts-ignore */}
+          </vscode-button>
+          
+          {/* History Button */}
+          {/* @ts-ignore */}
+          <vscode-button 
+            onClick={handleOpenHistoryModal}
+            appearance="secondary"
+            style={{ minWidth: '60px', height: '26px' }}
+            title="Load History"
+          >
+            History
           {/* @ts-ignore */}
           </vscode-button>
           
@@ -1481,6 +1629,265 @@ function App() {
                 }}
               >
                 Apply
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* History Modal */}
+      {showHistoryModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+          onClick={() => !historyLoading && setShowHistoryModal(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'var(--vscode-editor-background)',
+              border: '1px solid var(--vscode-panel-border)',
+              borderRadius: '6px',
+              width: '400px',
+              maxHeight: '80vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '12px 16px',
+                borderBottom: '1px solid var(--vscode-panel-border)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
+              <span style={{ fontWeight: 600, fontSize: '14px', color: 'var(--vscode-foreground)' }}>
+                Load History
+              </span>
+              <button
+                onClick={() => !historyLoading && setShowHistoryModal(false)}
+                disabled={historyLoading}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: historyLoading ? 'not-allowed' : 'pointer',
+                  color: 'var(--vscode-foreground)',
+                  fontSize: '18px',
+                  opacity: historyLoading ? 0.5 : 0.7
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* File Selection */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--vscode-descriptionForeground)' }}>
+                  Log File
+                </label>
+                <select
+                  value={selectedHistoryFile}
+                  onChange={(e) => handleHistoryFileChange(e.target.value)}
+                  disabled={historyLoading}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    fontSize: '13px',
+                    backgroundColor: 'var(--vscode-input-background)',
+                    color: 'var(--vscode-input-foreground)',
+                    border: '1px solid var(--vscode-input-border)',
+                    borderRadius: '4px',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  {historyFiles.map(file => (
+                    <option key={file.name} value={file.name}>
+                      {file.name} ({(file.size / 1024).toFixed(0)} KB)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Time Range Pickers - directly editable */}
+              {selectedHistoryFile && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {/* Start Time Row */}
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--vscode-descriptionForeground)' }}>
+                      Start
+                    </label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        disabled={historyLoading}
+                        style={{
+                          flex: 1,
+                          padding: '8px 10px',
+                          fontSize: '13px',
+                          backgroundColor: 'var(--vscode-input-background)',
+                          color: 'var(--vscode-input-foreground)',
+                          border: '1px solid var(--vscode-input-border)',
+                          borderRadius: '4px',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                      <input
+                        type="time"
+                        value={startTime}
+                        onChange={(e) => setStartTime(e.target.value)}
+                        disabled={historyLoading}
+                        style={{
+                          width: '110px',
+                          padding: '8px 10px',
+                          fontSize: '13px',
+                          backgroundColor: 'var(--vscode-input-background)',
+                          color: 'var(--vscode-input-foreground)',
+                          border: '1px solid var(--vscode-input-border)',
+                          borderRadius: '4px',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* End Time Row */}
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: 'var(--vscode-descriptionForeground)' }}>
+                      End
+                    </label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        disabled={historyLoading}
+                        style={{
+                          flex: 1,
+                          padding: '8px 10px',
+                          fontSize: '13px',
+                          backgroundColor: 'var(--vscode-input-background)',
+                          color: 'var(--vscode-input-foreground)',
+                          border: '1px solid var(--vscode-input-border)',
+                          borderRadius: '4px',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                      <input
+                        type="time"
+                        value={endTime}
+                        onChange={(e) => setEndTime(e.target.value)}
+                        disabled={historyLoading}
+                        style={{
+                          width: '110px',
+                          padding: '8px 10px',
+                          fontSize: '13px',
+                          backgroundColor: 'var(--vscode-input-background)',
+                          color: 'var(--vscode-input-foreground)',
+                          border: '1px solid var(--vscode-input-border)',
+                          borderRadius: '4px',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Progress Bar */}
+              {historyLoading && (
+                <div>
+                  <div style={{ marginBottom: '4px', fontSize: '12px', color: 'var(--vscode-descriptionForeground)' }}>
+                    Loading... {historyProgress}%
+                  </div>
+                  <div style={{
+                    width: '100%',
+                    height: '4px',
+                    backgroundColor: 'var(--vscode-widget-border)',
+                    borderRadius: '2px',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      width: `${historyProgress}%`,
+                      height: '100%',
+                      backgroundColor: 'var(--vscode-progressBar-background)',
+                      transition: 'width 0.2s'
+                    }} />
+                  </div>
+                </div>
+              )}
+
+              {/* Info */}
+              {!historyLoading && historyFiles.length === 0 && (
+                <div style={{ 
+                  padding: '16px', 
+                  textAlign: 'center', 
+                  color: 'var(--vscode-descriptionForeground)',
+                  fontSize: '13px'
+                }}>
+                  No PVSS_II*.log files found
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              style={{
+                padding: '12px 16px',
+                borderTop: '1px solid var(--vscode-panel-border)',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '8px'
+              }}
+            >
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                disabled={historyLoading}
+                style={{
+                  padding: '6px 14px',
+                  fontSize: '13px',
+                  cursor: historyLoading ? 'not-allowed' : 'pointer',
+                  backgroundColor: 'var(--vscode-button-secondaryBackground)',
+                  color: 'var(--vscode-button-secondaryForeground)',
+                  border: 'none',
+                  borderRadius: '4px',
+                  opacity: historyLoading ? 0.5 : 1
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLoadHistory}
+                disabled={historyLoading || !selectedHistoryFile}
+                style={{
+                  padding: '6px 14px',
+                  fontSize: '13px',
+                  cursor: (historyLoading || !selectedHistoryFile) ? 'not-allowed' : 'pointer',
+                  backgroundColor: 'var(--vscode-button-background)',
+                  color: 'var(--vscode-button-foreground)',
+                  border: 'none',
+                  borderRadius: '4px',
+                  opacity: (historyLoading || !selectedHistoryFile) ? 0.5 : 1
+                }}
+              >
+                {historyLoading ? 'Loading...' : 'Load'}
               </button>
             </div>
           </div>
