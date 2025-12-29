@@ -1749,14 +1749,17 @@ function App() {
                           boxSizing: 'border-box'
                         }}
                       />
-                      <input
-                        type="time"
-                        value={startTime}
-                        onChange={(e) => setStartTime(e.target.value)}
+                      {/* Hour dropdown (00-23) */}
+                      <select
+                        value={startTime.split(':')[0] || '00'}
+                        onChange={(e) => {
+                          const mins = startTime.split(':')[1] || '00';
+                          setStartTime(`${e.target.value}:${mins}`);
+                        }}
                         disabled={historyLoading}
                         style={{
-                          width: '110px',
-                          padding: '8px 10px',
+                          width: '60px',
+                          padding: '8px 4px',
                           fontSize: '13px',
                           backgroundColor: 'var(--vscode-input-background)',
                           color: 'var(--vscode-input-foreground)',
@@ -1764,7 +1767,35 @@ function App() {
                           borderRadius: '4px',
                           boxSizing: 'border-box'
                         }}
-                      />
+                      >
+                        {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                      <span style={{ alignSelf: 'center', color: 'var(--vscode-foreground)' }}>:</span>
+                      {/* Minute dropdown (00-59) */}
+                      <select
+                        value={startTime.split(':')[1] || '00'}
+                        onChange={(e) => {
+                          const hrs = startTime.split(':')[0] || '00';
+                          setStartTime(`${hrs}:${e.target.value}`);
+                        }}
+                        disabled={historyLoading}
+                        style={{
+                          width: '60px',
+                          padding: '8px 4px',
+                          fontSize: '13px',
+                          backgroundColor: 'var(--vscode-input-background)',
+                          color: 'var(--vscode-input-foreground)',
+                          border: '1px solid var(--vscode-input-border)',
+                          borderRadius: '4px',
+                          boxSizing: 'border-box'
+                        }}
+                      >
+                        {Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0')).map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
 
@@ -1790,14 +1821,17 @@ function App() {
                           boxSizing: 'border-box'
                         }}
                       />
-                      <input
-                        type="time"
-                        value={endTime}
-                        onChange={(e) => setEndTime(e.target.value)}
+                      {/* Hour dropdown (00-23) */}
+                      <select
+                        value={endTime.split(':')[0] || '00'}
+                        onChange={(e) => {
+                          const mins = endTime.split(':')[1] || '00';
+                          setEndTime(`${e.target.value}:${mins}`);
+                        }}
                         disabled={historyLoading}
                         style={{
-                          width: '110px',
-                          padding: '8px 10px',
+                          width: '60px',
+                          padding: '8px 4px',
                           fontSize: '13px',
                           backgroundColor: 'var(--vscode-input-background)',
                           color: 'var(--vscode-input-foreground)',
@@ -1805,7 +1839,35 @@ function App() {
                           borderRadius: '4px',
                           boxSizing: 'border-box'
                         }}
-                      />
+                      >
+                        {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map(h => (
+                          <option key={h} value={h}>{h}</option>
+                        ))}
+                      </select>
+                      <span style={{ alignSelf: 'center', color: 'var(--vscode-foreground)' }}>:</span>
+                      {/* Minute dropdown (00-59) */}
+                      <select
+                        value={endTime.split(':')[1] || '00'}
+                        onChange={(e) => {
+                          const hrs = endTime.split(':')[0] || '00';
+                          setEndTime(`${hrs}:${e.target.value}`);
+                        }}
+                        disabled={historyLoading}
+                        style={{
+                          width: '60px',
+                          padding: '8px 4px',
+                          fontSize: '13px',
+                          backgroundColor: 'var(--vscode-input-background)',
+                          color: 'var(--vscode-input-foreground)',
+                          border: '1px solid var(--vscode-input-border)',
+                          borderRadius: '4px',
+                          boxSizing: 'border-box'
+                        }}
+                      >
+                        {Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0')).map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 </div>
