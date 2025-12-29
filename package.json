@@ -3,7 +3,7 @@
   "displayName": "WinCC OA LogViewer",
   "description": "LogViewer for WinCC OA - View and analyze log files in real-time",
   "publisher": "RichardJanisch",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "author": "winccoa-tools-pack",
   "license": "MIT",
   "icon": "resources/logviewer_industrial_calm_128.png",

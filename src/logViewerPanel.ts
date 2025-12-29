@@ -5,6 +5,7 @@ import { ExtensionOutputChannel } from './extensionOutput';
 
 export class LogViewerPanel {
     public static currentPanel: LogViewerPanel | undefined;
+    private static _context: vscode.ExtensionContext;
 
     private readonly _panel: vscode.WebviewPanel;
     private readonly _extensionUri: vscode.Uri;
@@ -12,8 +13,13 @@ export class LogViewerPanel {
     private _watcher: LogFileWatcher | undefined;
     private _currentLogPath: string | undefined;
 
+    // State key for workspaceState
+    private static readonly STATE_KEY = 'logViewerSettings';
+
     // ---------- Factory ----------
-    public static createOrShow(extensionUri: vscode.Uri, logPath?: string) {
+    public static createOrShow(context: vscode.ExtensionContext, logPath?: string) {
+        LogViewerPanel._context = context;
+        const extensionUri = context.extensionUri;
         ExtensionOutputChannel.debug('LogViewerPanel', `createOrShow called with logPath: ${logPath}`);
         
         // Always open in a new column to the side
@@ -87,6 +93,8 @@ export class LogViewerPanel {
                         return;
                     case 'ready':
                         ExtensionOutputChannel.info('LogViewerPanel', 'Webview ready');
+                        // Send persisted settings to webview
+                        this._sendPersistedSettings();
                         // Webview is ready, start watching if logPath provided
                         if (logPath) {
                             this.startWatching(logPath);
@@ -100,11 +108,37 @@ export class LogViewerPanel {
                         ExtensionOutputChannel.debug('LogViewerPanel', 'Opening extension settings');
                         this._openSettings();
                         return;
+                    case 'saveSettings':
+                        ExtensionOutputChannel.debug('LogViewerPanel', 'Saving webview settings');
+                        this._saveSettings(message.settings);
+                        return;
                 }
             },
             null,
             this._disposables
         );
+    }
+
+    /**
+     * Send persisted settings to webview
+     */
+    private _sendPersistedSettings(): void {
+        const settings = LogViewerPanel._context.workspaceState.get(LogViewerPanel.STATE_KEY);
+        if (settings) {
+            ExtensionOutputChannel.debug('LogViewerPanel', 'Sending persisted settings to webview');
+            this._panel.webview.postMessage({
+                command: 'restoreSettings',
+                settings
+            });
+        }
+    }
+
+    /**
+     * Save settings from webview to workspaceState
+     */
+    private _saveSettings(settings: any): void {
+        LogViewerPanel._context.workspaceState.update(LogViewerPanel.STATE_KEY, settings);
+        ExtensionOutputChannel.trace('LogViewerPanel', `Settings saved: ${JSON.stringify(settings)}`);
     }
 
     /**

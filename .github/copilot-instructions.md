@@ -1,63 +1,310 @@
-# README für GitHub Copilot: WinCC OA Extensions
+# README für GitHub Copilot: WinCC OA LogViewer Extension
 
-## Allgemeine Projektstruktur und Regeln
+## Workspace-Übersicht
 
-Wir nutzen mehrere VS Code Extensions für WinCC OA, darunter CTL Language, Control, LogViewer, ScriptActions und den TestExplorer.
+Dieser Workspace enthält das komplette **WinCC OA Tools Pack** - ein Ökosystem von VS Code Extensions für die WinCC OA Entwicklung.
 
-Alle Extensions nutzen eine gemeinsame NPM-Shared-Library als Core, die die Kommunikation mit WinCC OA bereitstellt.
+### Repository-Struktur
 
-Wir haben ein einheitliches Logging-Format, ein gemeinsames Makefile für Build-Befehle und ähnliche Projektstrukturen in allen Repos.
+```
+workspace/
+├── vscode-winccoa-core/              # Core Extension (Projekt-Management)
+├── vscode-winccoa-logviewer/         # Log-Datei Viewer (DIESES REPO)
+├── vscode-winccoa-scriptactions/     # Script-Ausführung
+├── vscode-winccoa-tests/             # Test Explorer Integration
+├── vscode-winccoa-ctrllang/          # CTL Language Support
+├── vscode-winccoa-sidepanel/         # Side Panel UI
+├── vscode-winccoa-mcp-server/        # MCP Server (GitHub Copilot Integration)
+├── npm-shared-library-core/          # Gemeinsame Bibliothek
+└── DevEnv/                           # WinCC OA Test-Projekt
+```
 
-## Workflow mit GitHub Copilot
+### Repository-Abhängigkeiten
 
-Wenn ein neues Feature gestartet wird, soll Copilot automatisch `git flow feature start <Name>` ausführen.
+```
+npm-shared-library-core (Basis für alle Extensions)
+    ↓
+vscode-winccoa-core (Zentrale Services)
+    ↓
+    ├── vscode-winccoa-logviewer (nutzt Core für Auto-Detection)
+    ├── vscode-winccoa-scriptactions (nutzt Core für Projekt-Info)
+    ├── vscode-winccoa-tests (nutzt Script Actions + Core)
+    ├── vscode-winccoa-ctrllang (Language Server)
+    └── vscode-winccoa-sidepanel (UI Integration)
+```
 
-Bevor ein Feature gemergt wird, tragen wir die Änderungen in den Changelog ein und machen einen finalen Commit.
+**Wichtige Beziehungen:**
+- **Core** → Alle anderen Extensions (optional oder required)
+- **Script Actions** → Test Explorer (für Test-Ausführung)
+- **LogViewer** → Core (für automatische Projekt-Erkennung, optional)
+- **npm-shared-library-core** → Alle Extensions (gemeinsame Kommunikation mit WinCC OA)
 
-Commit-Messages beginnen immer mit einem Präfix wie `feat:`, `fix:`, `perf:`, usw. und sind so knapp wie möglich.
+### Extension-Rollen
 
-Erst wenn alles getestet ist und ich das "Go" gebe, soll Copilot committen und dann mit `git flow feature finish` mergen.
+| Extension | Rolle | Status |
+|-----------|-------|--------|
+| **Core** | Zentrale Projekt-Verwaltung, Status Bar | v0.2.2 |
+| **LogViewer** | Echtzeit Log-Monitoring | v0.2.3 |
+| **Script Actions** | Script-Ausführung mit Argumenten | v0.3.1 |
+| **Test Explorer** | Unit-Test Integration | v0.2.2 |
+| **CTL Language** | Syntax, IntelliSense, Language Server | dev |
+| **Side Panel** | Custom UI Panel | dev |
+| **npm-shared** | Gemeinsame WinCC OA Kommunikation | core lib |
 
-Es wird nach jeder Änderung kompiliert (`npm run compile`).
+## Projektübersicht (LogViewer)
+
+Der **WinCC OA LogViewer** ist eine VS Code Extension für Echtzeit-Überwachung und Analyse von WinCC OA Log-Dateien.
+
+### Kernfunktionen
+- Echtzeit-Monitoring von Log-Dateien (PVSS_II.log, WCCOActrl*.log, etc.)
+- Intelligentes Parsing von PVSS-Format und generischen Logs
+- Webview-basierte UI mit React/Vite
+- Filter nach Severity-Level (DEBUG, INFO, WARNING, FATAL, SEVERE, OTHER)
+- Expandierbare Metadaten (Script, Library, Line, Stacktrace)
+- Automatische Projekt-Erkennung via Core Extension
+
+### Abhängigkeiten
+- **WinCC OA Core Extension** (optional): Für automatische Projekt-Erkennung
+- **NPM Shared Library**: Gemeinsame Kommunikations-Layer (nicht direkt verwendet im LogViewer)
+
+## Projektarchitektur
+
+### Struktur
+```
+vscode-winccoa-logviewer/
+├── src/                          # Extension Backend (TypeScript)
+│   ├── extension.ts              # Entry Point, Extension Activation
+│   ├── logFileWatcher.ts         # File System Watcher, Parser-Integration
+│   ├── logParser.ts              # PVSS-Format Parser (stateful!)
+│   ├── logEvent.ts               # Event Type Definitions
+│   ├── logViewerPanel.ts         # Webview Panel Management
+│   └── extensionOutput.ts        # Logging/Diagnostics
+├── webview/                      # React Frontend (Vite)
+│   ├── src/
+│   │   ├── App.tsx               # Main UI Component
+│   │   ├── App.css               # Styles
+│   │   └── types/logEvent.ts     # Shared Types
+│   └── package.json              # Webview Dependencies
+├── .vscode/
+│   ├── launch.json               # Debug Configurations
+│   └── tasks.json                # Build Tasks
+├── CHANGELOG.md                  # Version History
+└── package.json                  # Extension Manifest
+```
+
+### Technische Schlüsselkomponenten
+
+#### 1. LogFileWatcher (`src/logFileWatcher.ts`)
+- **FileSystemWatcher**: Überwacht `*.log` Dateien mit `onDidChange/onCreate`
+- **File Positions**: `Map<string, number>` trackt Read-Position pro Datei
+- **Line Buffers**: `Map<string, string>` speichert unvollständige Zeilen
+- **Per-File Parsers**: Separate Parser-Instanz für jede Log-Datei
+- **Initialization**: Watcher muss VOR `initializeFilePositions()` erstellt werden (Race Condition Fix v0.2.1)
+
+#### 2. LogParser (`src/logParser.ts`)
+- **CRITICAL**: **Stateful Parser** mit internem Buffer!
+  - `parseLine(line)` gibt nur COMPLETED events zurück
+  - Das letzte Event bleibt im `currentEvent` Buffer
+  - **MUSS** `flush()` nach allen Zeilen aufrufen, sonst fehlt letztes Event!
+  - Bug v0.2.2: Ohne flush() erscheinen Events in falscher Reihenfolge
+
+```typescript
+// CORRECT Usage Pattern:
+for (const line of lines) {
+    const events = parser.parseLine(line);
+    events.forEach(event => this.emitEvent(event));
+}
+// CRITICAL: Flush final event!
+const lastEvent = parser.flush();
+if (lastEvent) this.emitEvent(lastEvent);
+```
+
+- **Format**: `IDENTIFIER (NUM), YYYY.MM.DD HH:mm:ss.SSS, SCOPE, SEVERITY, MSGNUM, MESSAGE`
+- **Metadata**: Parst Script, Library, Line, Stacktrace aus Folgezeilen
+
+#### 3. Webview Panel (`src/logViewerPanel.ts`)
+- **vscode.WebviewPanel**: Hosted React App
+- **Message Passing**: `postMessage()` zwischen Extension ↔ Webview
+- **Commands**: `newLogEvent`, `availableLogFiles`, `ready`, `setPaused`
+
+#### 4. React Frontend (`webview/src/App.tsx`)
+- **VSCode Webview UI Toolkit**: Native VS Code Komponenten
+- **Severity Filter**: Toggle-Buttons mit Theme-angepassten Farben
+- **Column Visibility**: Rechtsklick-Menü für Spaltenauswahl
+- **Resizable Columns**: Drag-to-resize mit MouseMove Handler
+- **Expandable Metadata**: Click auf Log-Zeile zeigt Details
+- **File Links**: Klickbar → öffnet Dateien in Editor
+
+### Build-System
+- **TypeScript**: Kompiliert Extension Code (`tsc -p .`)
+- **Vite**: Bündelt React Webview (`cd webview && npm run build`)
+- **Watch Mode**: `npm run watch` für Live-Entwicklung
+- **Makefile**: `make test-local` für lokales VSIX Testing
+
+## Workflow-Regeln
+
+### 1. Feature-Entwicklung
+```bash
+# 1. Feature starten (automatisch)
+git flow feature start <feature-name-x.y.z>
+
+# 2. Entwicklung + Compile nach JEDER Änderung
+npm run compile
+
+# 3. Version in package.json anpassen (PATCH für fix, MINOR für feature)
+# 4. CHANGELOG.md aktualisieren mit neuem Eintrag
+
+# 5. Commit mit semantischem Präfix
+git add -A
+git commit -m "feat: beschreibung" # oder fix:, perf:, docs:, etc.
+
+# 6. Feature finishen (automatisch mergen nach develop)
+git flow feature finish <feature-name-x.y.z>
+```
+
+### 2. Commit-Präfixe (Conventional Commits)
+- `feat:` - Neues Feature (MINOR Version bump)
+- `fix:` - Bug Fix (PATCH Version bump)
+- `perf:` - Performance Verbesserung
+- `docs:` - Dokumentationsänderungen
+- `refactor:` - Code-Umstrukturierung ohne Funktionsänderung
+- `test:` - Test-Hinzufügungen/-Änderungen
+- `chore:` - Build/Tooling Änderungen
+
+### 3. Compile-Zyklus
+**IMMER** nach Code-Änderungen:
+```bash
+npm run compile  # Baut Extension + Webview
+```
+
+### 4. Testing
+```bash
+make test-local  # Erstellt VSIX und öffnet Test-Extension-Host
+```
 
 ## Wichtige technische Details
 
-### Script Actions Extension
-- Command: `winccoa.executeScriptWithArgs` 
-- **WICHTIG**: Arguments werden als PLAIN STRINGS übergeben - KEIN `-lflag`, KEINE `-` Präfixe, einfach nur die Argumente!
-- Beispiel richtig: `testCaseId` → Command: `/opt/WinCC_OA/bin/WCCOActrl script.ctl -proj DevEnv testCaseId`
-- Beispiel falsch: `-lflag testCaseId` oder `single start testCaseId`
-- Die Extension hängt die Args direkt nach `-proj <projectName>` an
+### Parser Flush Pattern (CRITICAL!)
+**Problem**: Stateful Parser hält letztes Event im Buffer
+**Lösung**: Immer `flush()` nach allen `parseLine()` Aufrufen
 
-### Test Explorer Extension  
-- Parst Test-Dateien nach `class X : OaTest` Pattern
-- Einzelne Tests werden über `TestRunner.executeScriptWithArgs(fileUri, testCaseId)` ausgeführt
-- **WICHTIG**: Nur die `testCaseId` als Argument übergeben, NICHT `single start testCaseId`
-- File Watcher wurde optimiert: Nur geänderte Dateien werden neu geparst, nicht das ganze Projekt
-- Bei File Create: Datei wird einzeln geparst und hinzugefügt
-- Bei File Change: Nur diese Datei wird neu geparst und aktualisiert
-- Bei File Delete: Nur diese Datei wird aus dem Test-Tree entfernt
+```typescript
+// In logFileWatcher.ts - BEIDE Parser!
+const events = parser.parseLine(line);
+events.forEach(event => this.emitEvent(event));
 
-### Performance-Optimierungen
-- File Watcher nutzt `handleFileCreated()`, `handleFileChanged()`, `handleFileDeleted()` für inkrementelle Updates
-- Kein vollständiges `discoverTests()` mehr bei Dateiänderungen
-- `TestDiscovery.parseTestFile(uri)` für einzelne Dateien verwenden
+// CRITICAL: Nach ALLEN Zeilen!
+const lastEvent = parser.flush();
+if (lastEvent) {
+    this.emitEvent(lastEvent);
+}
+```
+
+### File Watcher Initialization (Race Condition Fix)
+**Problem**: Events während Initialization wurden ignoriert
+**Lösung**: Watcher VOR `initializeFilePositions()` erstellen
+
+```typescript
+// CORRECT Order:
+this.watcher = vscode.workspace.createFileSystemWatcher(pattern);
+this.watcher.onDidChange(async (uri) => { ... });
+await this.initializeFilePositions(); // NACH Watcher Setup!
+this.isInitialized = true;
+```
+
+### Webview Theming (Light/Dark Mode)
+**Problem**: VS Code CSS-Variablen passen sich automatisch ans Theme an
+**Lösung**: Nutze `var(--vscode-*)` für adaptive Farben
+
+```tsx
+// Filter-Buttons (v0.2.3)
+backgroundColor: isActive ? 'var(--severity-*-bg)' : 'transparent'
+color: isActive ? 'var(--severity-*)' : 'var(--vscode-button-secondaryForeground)'
+border: isActive ? `1px solid color` : '1px solid var(--vscode-panel-border)'
+
+// Header-Text
+color: 'var(--vscode-foreground)' // schwarz in light, weiß in dark
+```
+
+### Severity Colors (CSS Variables)
+Definiert in `webview/src/index.css`:
+```css
+--severity-error: #f48771;
+--severity-severe: #ff6b6b;
+--severity-warning: #cca700;
+--severity-info: #75beff;
+--severity-debug: #b5cea8;
+--severity-other: #c586c0;
+```
 
 ## Aktuelle Probleme und To-Dos
 
-Der LogViewer zeigt aktuell nicht immer die neueste Änderung an, es gibt ein Parsing-Problem.
+### ✅ Gelöste Issues
+- ~~LogViewer zeigt nicht alle Zeilen~~ → **v0.2.2** (Parser flush() fix)
+- ~~File Watcher Race Condition~~ → **v0.2.1** (Initialization order)
+- ~~Filter-Buttons zu dunkel in Light Mode~~ → **v0.2.3** (Transparent background)
 
-~~Im TestExplorer sollen Tests auch einzeln erkennbar sein~~ ✅ ERLEDIGT (v0.2.1)
+### 🔧 Offene Bugs
+1. **File-Watcher-Menü Bug** (minor): Alle Einträge verschwinden bei Ignorieren-Auswahl
+2. **Message-Hintergründe Light Mode** (enhancement): Bessere Lesbarkeit durch angepasste Hintergründe
 
-~~Der File-Watcher muss so angepasst werden, dass nur die geänderten Dateien neu geparst werden~~ ✅ ERLEDIGT (v0.2.2)
+### 🚀 Geplante Features
+1. **Export Log Events**: CSV/JSON Export-Funktion
+2. **Log-Level Highlighting**: Farbige Zeilen-Hintergründe nach Severity
+3. **Timestamp Filtering**: Zeit-basierte Filter (z.B. "Letzte 5 Minuten")
+4. **Performance**: Virtualized List für große Log-Mengen
 
-Für die CTL-Language-Extension soll das Go-to-Feature für Variablen integriert werden, bevor wir den Language-Server später refactoren.
+## Best Practices
 
-Ein Bug im File-Watcher-Menü sorgt dafür, dass aktuell alle Einträge verschwinden, wenn man versucht, Dateien auszuwählen, die ignoriert werden sollen.
+### Code-Editing
+- **Multi-Replace nutzen**: Bei mehreren unabhängigen Edits → `multi_replace_string_in_file`
+- **3-5 Zeilen Kontext**: Immer genug Code um/nach Edit-Stelle inkludieren
+- **Keine Platzhalter**: Niemals `...existing code...` in oldString/newString
 
-### Known Issues
-**WinCC OA Limitation**: Beim Ausführen einzelner Testfälle generiert WinCC OA aktuell keinen vollständigen Test-Report. Die Infrastruktur in den Extensions ist vorbereitet, aber die volle Funktionalität hängt von zukünftigen WinCC OA Verbesserungen ab.
+### Debugging
+- **Extension Output**: `ExtensionOutputChannel.debug/trace/error()` nutzen
+- **Launch Config**: `.vscode/launch.json` hat Debug-Profile
+- **Developer Tools**: Webview Debugging mit F1 → "Toggle Developer Tools"
 
-## Versionsstände (Stand: 2025-12-25)
-- Script Actions: v0.3.1 - executeScriptWithArgs mit plain arguments
-- Test Explorer: v0.2.2 - Single test execution + Performance-Optimierungen
+### Testing
+- **Local VSIX**: `make test-local` für manuelle Tests
+- **Mock Data**: `generateMockLogEvents()` für Webview-Entwicklung ohne Backend
+
+### Git Workflow (CRITICAL)
+- **Working Tree sauber halten**: Vor `git flow feature finish` immer `git status` prüfen
+- **Runtime Changes stashen**: DB-Dateien, Build-Artefakte vor Feature-Finish mit `git stash` entfernen
+- **Nie ohne User-Freigabe committen**: Erst bei "Go" vom User den finalen Commit machen
+- **Feature finish**: Erst testen, dann CHANGELOG, dann auf User-Freigabe warten, dann committen & finishen
+
+## Test-Workspace Management (Best Practices)
+
+### Directory Structure
+- **test-workspace auf Root-Level**: Neben Extension-Ordnern, nicht darin verschachtelt
+- **Self-contained Fixtures**: Alle Test-Dateien im Repository für reproduzierbare Tests
+
+### Git & VSIX
+- **.gitignore für Runtime**: DB-Dateien, Logs als Runtime-Artefakte nicht committen
+- **.vscodeignore**: test-workspace/** excluded für saubere VSIX-Packages ohne Secrets
+- **Große Commits**: Bei User-Zustimmung auch 1000+ Dateien OK ("ne das passt schon")
+
+## Versionsstände (Stand: 2025-12-28)
+- **LogViewer**: v0.2.3 - UI Light Mode Fixes
+- **CTL Language**: v0.3.0 - Member access navigation + comprehensive tests
+- **Script Actions**: v0.3.1 - Plain arguments (keine `-lflag` Präfixe)
+- **Test Explorer**: v0.2.2 - Single test execution + Performance
+- **Core Extension**: v0.2.2 - Auto-select first project + startup fix
+
+## Zusammenarbeit mit GitHub Copilot
+
+### Erwartungen
+- **Strukturiert arbeiten**: Klare Workflows, kein Code-Chaos
+- **Kompilieren nach Änderungen**: Immer `npm run compile`
+- **Git Flow einhalten**: Feature Branches, semantische Commits
+- **Changelog pflegen**: Jede Version dokumentieren
+- **Testen vor Merge**: "Go" vom User abwarten
+
+### Communication Style
+- **Deutsch**: Primäre Sprache für Kommunikation
+- **Englisch**: Code, Commits, Dokumentation
+- **Knapp & präzise**: Keine unnötigen Erklärungen
+- **Technisch korrekt**: Exakte Begriffe, keine Vereinfachungen

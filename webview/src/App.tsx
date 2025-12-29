@@ -55,16 +55,72 @@ interface ColumnWidths {
   description: number;
 }
 
+// Persisted state interface
+interface PersistedState {
+  newestFirst: boolean;
+  autoExpandAll: boolean;
+  selectedLogFiles: string[];
+  severityFilter: LogSeverity[];
+  columnVisibility: ColumnVisibility;
+  columnWidths: ColumnWidths;
+}
+
+// Default values for persisted state
+const defaultPersistedState: PersistedState = {
+  newestFirst: true,
+  autoExpandAll: false,
+  selectedLogFiles: [],
+  severityFilter: ['DEBUG', 'INFO', 'WARNING', 'FATAL', 'SEVERE', 'OTHER'],
+  columnVisibility: {
+    identifier: true,
+    level: true,
+    time: true,
+    scope: true,
+    description: true,
+  },
+  columnWidths: {
+    identifier: 100,
+    level: 80,
+    time: 120,
+    scope: 80,
+    description: 400,
+  },
+};
+
+// Acquire VSCode API once at module level (can only be called once!)
+let vscodeApi: ReturnType<typeof acquireVsCodeApi> | null = null;
+try {
+  if (typeof acquireVsCodeApi !== 'undefined') {
+    vscodeApi = acquireVsCodeApi();
+  }
+} catch (e) {
+  console.log('Not running in VSCode webview');
+}
+
+// Helper to get initial state from vscode.getState()
+function getInitialState(): PersistedState {
+  if (vscodeApi) {
+    const savedState = vscodeApi.getState() as PersistedState | undefined;
+    if (savedState) {
+      return { ...defaultPersistedState, ...savedState };
+    }
+  }
+  return defaultPersistedState;
+}
+
+// Get initial state once at module load
+const initialState = getInitialState();
+
 function App() {
   const [allLogs, setAllLogs] = useState<LogEvent[]>([]);
   const [isPaused, setIsPaused] = useState(false);
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [showLogFileModal, setShowLogFileModal] = useState(false);
   const [availableLogFiles, setAvailableLogFiles] = useState<string[]>([]);
-  const [selectedLogFiles, setSelectedLogFiles] = useState<Set<string>>(new Set());
+  const [selectedLogFiles, setSelectedLogFiles] = useState<Set<string>>(new Set(initialState.selectedLogFiles));
   const [logFileSearch, setLogFileSearch] = useState('');
-  const [newestFirst, setNewestFirst] = useState(true); // Default: newest logs at top
-  const [autoExpandAll, setAutoExpandAll] = useState(false); // Default: only expand SEVERE
+  const [newestFirst, setNewestFirst] = useState(initialState.newestFirst);
+  const [autoExpandAll, setAutoExpandAll] = useState(initialState.autoExpandAll);
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set()); // Track expanded logs by unique key
   const logListRef = useRef<HTMLDivElement>(null); // Ref for auto-scroll
 
@@ -126,39 +182,18 @@ function App() {
   };
   const [searchTerm, setSearchTerm] = useState('');
   const [severityFilter, setSeverityFilter] = useState<Set<LogSeverity>>(
-    new Set(['DEBUG', 'INFO', 'WARNING', 'FATAL', 'SEVERE', 'OTHER'])
+    new Set(initialState.severityFilter)
   );
-  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>({
-    identifier: true,
-    level: true,
-    time: true,
-    scope: true,
-    description: true,
-  });
-  const [columnWidths, setColumnWidths] = useState<ColumnWidths>({
-    identifier: 100,
-    level: 80,
-    time: 120,
-    scope: 80,
-    description: 400,
-  });
+  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(initialState.columnVisibility);
+  const [columnWidths, setColumnWidths] = useState<ColumnWidths>(initialState.columnWidths);
   const [showColumnMenu, setShowColumnMenu] = useState(false);
   const [columnMenuPosition, setColumnMenuPosition] = useState({ x: 0, y: 0 });
   const [resizingColumn, setResizingColumn] = useState<keyof ColumnWidths | null>(null);
   const [resizeStartX, setResizeStartX] = useState(0);
   const [resizeStartWidth, setResizeStartWidth] = useState(0);
 
-  // VSCode API für Messaging
-  const vscode = useMemo(() => {
-    try {
-      if (typeof acquireVsCodeApi !== 'undefined') {
-        return acquireVsCodeApi();
-      }
-    } catch (e) {
-      console.log('Not running in VSCode webview');
-    }
-    return null;
-  }, []);
+  // VSCode API (acquired once at module level)
+  const vscode = vscodeApi;
 
   // Handler für File-Click
   const handleFileClick = (filePath: string, line?: number) => {
@@ -243,8 +278,28 @@ function App() {
         case 'availableLogFiles':
           // Receive available log files from backend
           setAvailableLogFiles(message.files);
-          // Select all by default
-          setSelectedLogFiles(new Set(message.files));
+          // Only select all by default if no restored settings exist
+          setSelectedLogFiles(prev => {
+            // If we already have a selection from restored settings, keep it
+            // (filter to only include files that still exist)
+            if (prev.size > 0) {
+              const validFiles = new Set(Array.from(prev).filter(f => message.files.includes(f)));
+              return validFiles.size > 0 ? validFiles : new Set(message.files);
+            }
+            return new Set(message.files);
+          });
+          break;
+        case 'restoreSettings':
+          // Restore persisted settings from extension
+          const settings = message.settings;
+          if (settings) {
+            if (settings.newestFirst !== undefined) setNewestFirst(settings.newestFirst);
+            if (settings.autoExpandAll !== undefined) setAutoExpandAll(settings.autoExpandAll);
+            if (settings.selectedLogFiles) setSelectedLogFiles(new Set(settings.selectedLogFiles));
+            if (settings.severityFilter) setSeverityFilter(new Set(settings.severityFilter));
+            if (settings.columnVisibility) setColumnVisibility(settings.columnVisibility);
+            if (settings.columnWidths) setColumnWidths(settings.columnWidths);
+          }
           break;
       }
     };
@@ -255,6 +310,21 @@ function App() {
       window.removeEventListener('message', handleMessage);
     };
   }, [vscode]);
+
+  // Save settings to extension whenever they change
+  useEffect(() => {
+    if (vscode) {
+      const settings = {
+        newestFirst,
+        autoExpandAll,
+        selectedLogFiles: Array.from(selectedLogFiles),
+        severityFilter: Array.from(severityFilter),
+        columnVisibility,
+        columnWidths,
+      };
+      vscode.postMessage({ command: 'saveSettings', settings });
+    }
+  }, [newestFirst, autoExpandAll, selectedLogFiles, severityFilter, columnVisibility, columnWidths, vscode]);
 
   // Simuliere neue Logs alle 3 Sekunden (nur im Dev-Mode wenn pausiert ist false)
   useEffect(() => {
@@ -1332,7 +1402,11 @@ function App() {
                     <input
                       type="checkbox"
                       checked={selectedLogFiles.has(file)}
-                      onChange={() => toggleLogFile(file)}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        toggleLogFile(file);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
                       style={{
                         marginRight: '8px',
                         cursor: 'pointer'

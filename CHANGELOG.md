@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.4] - 2025-12-29
+
+### Added
+- **Settings Persistence**: UI settings (newestFirst, autoExpandAll, selectedLogFiles, severityFilter, columnVisibility, columnWidths) are now persisted across sessions via workspaceState
+
+### Fixed
+- Fixed checkbox double-toggle bug on Windows when selecting/deselecting log files
+- Fixed selected log files being reset when panel reopens (now properly restored from saved settings)
+
 ## [0.2.3] - 2025-12-26
 
 ### Fixed

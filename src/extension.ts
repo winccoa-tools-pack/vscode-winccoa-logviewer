@@ -78,7 +78,7 @@ export function activate(context: vscode.ExtensionContext) {
             }
             
             ExtensionOutputChannel.info('Command', `Opening LogViewer: ${resolvedPath}`);
-            LogViewerPanel.createOrShow(context.extensionUri, resolvedPath);
+            LogViewerPanel.createOrShow(context, resolvedPath);
         }
     );
 
