@@ -243,6 +243,9 @@ Definiert in `webview/src/index.css`:
 - ~~LogViewer zeigt nicht alle Zeilen~~ → **v0.2.2** (Parser flush() fix)
 - ~~File Watcher Race Condition~~ → **v0.2.1** (Initialization order)
 - ~~Filter-Buttons zu dunkel in Light Mode~~ → **v0.2.3** (Transparent background)
+- ~~Settings nicht persistiert~~ → **v0.2.4** (workspaceState persistence)
+- ~~Checkbox Double-Toggle Windows~~ → **v0.2.4** (e.stopPropagation fix)
+- ~~Timestamp Filtering~~ → **v0.2.5** (Load History Feature)
 
 ### 🔧 Offene Bugs
 1. **File-Watcher-Menü Bug** (minor): Alle Einträge verschwinden bei Ignorieren-Auswahl
@@ -251,8 +254,42 @@ Definiert in `webview/src/index.css`:
 ### 🚀 Geplante Features
 1. **Export Log Events**: CSV/JSON Export-Funktion
 2. **Log-Level Highlighting**: Farbige Zeilen-Hintergründe nach Severity
-3. **Timestamp Filtering**: Zeit-basierte Filter (z.B. "Letzte 5 Minuten")
-4. **Performance**: Virtualized List für große Log-Mengen
+3. **Performance**: Virtualized List für große Log-Mengen (10k+ Events)
+4. **Unit Tests**: Parser-Tests und Watcher-Tests fehlen noch
+
+## Technische Erkenntnisse
+
+### Settings Persistenz (v0.2.4+)
+- **workspaceState** für UI-Settings nutzen (nicht globalState)
+- Settings beim Panel-Open via `restoreSettings` Message senden
+- Im Webview: Settings im `useEffect` speichern bei Änderungen
+- **WICHTIG**: Beim Restore prüfen ob vorherige Werte existieren bevor überschreiben
+
+```typescript
+// Backend: Settings senden bei ready
+case 'ready':
+  const settings = this._context.workspaceState.get('logViewerSettings');
+  this._panel.webview.postMessage({ command: 'restoreSettings', settings });
+
+// Webview: Nur überschreiben wenn vorher leer
+setSelectedLogFiles(prev => prev.size > 0 ? prev : new Set(message.files));
+```
+
+### Native HTML Controls in Webviews (v0.2.5)
+- **Date Picker Dark Mode**: `color-scheme: dark` in CSS für native Inputs
+- VS Code setzt `body.vscode-dark` / `body.vscode-light` Klassen
+- **24h Format**: Browser-Default ist locale-abhängig, besser eigene Dropdowns bauen
+
+```css
+body.vscode-dark input[type="date"] {
+  color-scheme: dark;
+}
+```
+
+### Batch Loading für große Dateien
+- History-Files können groß sein (MB)
+- Events in Batches von 100 senden mit Progress-Updates
+- Modal erst schließen wenn 100% erreicht
 
 ## Best Practices
 
@@ -287,12 +324,12 @@ Definiert in `webview/src/index.css`:
 - **.vscodeignore**: test-workspace/** excluded für saubere VSIX-Packages ohne Secrets
 - **Große Commits**: Bei User-Zustimmung auch 1000+ Dateien OK ("ne das passt schon")
 
-## Versionsstände (Stand: 2025-12-28)
-- **LogViewer**: v0.2.3 - UI Light Mode Fixes
+## Versionsstände (Stand: 2025-12-29)
+- **LogViewer**: v0.2.5 - Load History + Settings Persistence + 24h Time Picker
 - **CTL Language**: v0.3.0 - Member access navigation + comprehensive tests
-- **Script Actions**: v0.3.1 - Plain arguments (keine `-lflag` Präfixe)
-- **Test Explorer**: v0.2.2 - Single test execution + Performance
-- **Core Extension**: v0.2.2 - Auto-select first project + startup fix
+- **Script Actions**: v0.4.0 - Default commands with -n flag
+- **Test Explorer**: v0.2.4 - Cancel/Stop support
+- **Core Extension**: v0.2.3 - PMON start/stop sequence fix
 
 ## Zusammenarbeit mit GitHub Copilot
 
