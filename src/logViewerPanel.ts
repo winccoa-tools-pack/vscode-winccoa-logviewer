@@ -112,6 +112,14 @@ export class LogViewerPanel {
                         ExtensionOutputChannel.debug('LogViewerPanel', 'Saving webview settings');
                         this._saveSettings(message.settings);
                         return;
+                    case 'getHistoryFiles':
+                        ExtensionOutputChannel.debug('LogViewerPanel', 'Getting history files');
+                        this._sendHistoryFiles();
+                        return;
+                    case 'loadHistory':
+                        ExtensionOutputChannel.info('LogViewerPanel', `Loading history: ${message.fileName}`);
+                        this._loadHistory(message.fileName, message.fromTime, message.toTime);
+                        return;
                 }
             },
             null,
@@ -139,6 +147,76 @@ export class LogViewerPanel {
     private _saveSettings(settings: any): void {
         LogViewerPanel._context.workspaceState.update(LogViewerPanel.STATE_KEY, settings);
         ExtensionOutputChannel.trace('LogViewerPanel', `Settings saved: ${JSON.stringify(settings)}`);
+    }
+
+    /**
+     * Send available history files to webview
+     */
+    private _sendHistoryFiles(): void {
+        if (!this._watcher) {
+            ExtensionOutputChannel.warn('LogViewerPanel', 'Cannot get history files: no watcher');
+            return;
+        }
+        
+        const files = this._watcher.getHistoryFiles();
+        this._panel.webview.postMessage({
+            command: 'historyFiles',
+            files: files.map(f => ({
+                name: f.name,
+                size: f.size,
+                modified: f.modified.toISOString(),
+                firstTimestamp: f.firstTimestamp,
+                lastTimestamp: f.lastTimestamp
+            }))
+        });
+    }
+
+    /**
+     * Load history from a specific file
+     */
+    private async _loadHistory(fileName: string, fromTime?: string, toTime?: string): Promise<void> {
+        if (!this._watcher) {
+            ExtensionOutputChannel.warn('LogViewerPanel', 'Cannot load history: no watcher');
+            return;
+        }
+
+        // Send loading state
+        this._panel.webview.postMessage({
+            command: 'historyLoading',
+            loading: true
+        });
+
+        try {
+            const events = await this._watcher.loadHistoryFile(fileName, fromTime, toTime);
+            
+            // Send events in batches to avoid overwhelming the webview
+            const batchSize = 100;
+            for (let i = 0; i < events.length; i += batchSize) {
+                const batch = events.slice(i, i + batchSize);
+                this._panel.webview.postMessage({
+                    command: 'historyEvents',
+                    events: batch,
+                    progress: Math.min(100, Math.round((i + batch.length) / events.length * 100))
+                });
+                // Small delay between batches to allow UI to update
+                await new Promise(resolve => setTimeout(resolve, 10));
+            }
+
+            // Send completion
+            this._panel.webview.postMessage({
+                command: 'historyLoading',
+                loading: false,
+                totalEvents: events.length
+            });
+
+        } catch (error) {
+            ExtensionOutputChannel.error('LogViewerPanel', 'Error loading history', error as Error);
+            this._panel.webview.postMessage({
+                command: 'historyLoading',
+                loading: false,
+                error: (error as Error).message
+            });
+        }
     }
 
     /**

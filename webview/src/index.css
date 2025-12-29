@@ -57,6 +57,16 @@ body {
   overflow: hidden;
 }
 
+/* Date picker dark mode support - VS Code adds body.vscode-dark class */
+body.vscode-dark input[type="date"] {
+  color-scheme: dark;
+}
+
+body.vscode-light input[type="date"],
+body.vscode-high-contrast-light input[type="date"] {
+  color-scheme: light;
+}
+
 #root {
   width: 100%;
   height: 100vh;

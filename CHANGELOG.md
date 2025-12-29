@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.5] - 2025-12-29
+
+### Added
+- **Load History**: New "History" button to load historical PVSS_II*.log files
+  - File selection dropdown with file size info
+  - Date picker with 24-hour time dropdowns (European format)
+  - Auto-fills time range from file timestamps
+  - Batch loading with progress indicator
+  - All history settings persisted across sessions
+- Dark mode support for native date picker elements
+
 ## [0.2.4] - 2025-12-29
 
 ### Added
