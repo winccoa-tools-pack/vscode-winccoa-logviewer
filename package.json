@@ -3,10 +3,10 @@
   "displayName": "WinCC OA LogViewer",
   "description": "LogViewer for WinCC OA - View and analyze log files in real-time",
   "publisher": "RichardJanisch",
-  "version": "0.2.5",
-  "author": "winccoa-tools-pack",
+  "version": "1.0.0",
+  "author": "RichardJanisch",
   "license": "MIT",
-  "icon": "resources/logviewer_industrial_calm_128.png",
+  "icon": "resources/wincc_oa_logviewer_512.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/winccoa-tools-pack/vscode-winccoa-logviewer"
@@ -15,10 +15,11 @@
     "vscode": "^1.106.2"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Visualization"
   ],
   "extensionDependencies": [
-    "winccoa-tools-pack.winccoa-core"
+    "RichardJanisch.winccoa-core"
   ],
   "activationEvents": [
     "onCommand:winccoa-logviewer.open"

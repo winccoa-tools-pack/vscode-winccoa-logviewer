@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2025-12-30
+
+### 🎉 First Stable Release
+
+This is the first stable release of WinCC OA LogViewer extension.
+
+### Added
+- **Real-Time Log Monitoring**:
+  - Live file watching with automatic updates
+  - PVSS_II.log format parsing with metadata extraction (script, library, line, stacktrace)
+  - Support for multiple log files (PVSS_II.log, WCCOActrl*.log, custom logs)
+  - Pause/Resume functionality for log streaming
+  - Newest First toggle to show recent events first
+- **Advanced Filtering**:
+  - Severity level filtering (DEBUG, INFO, WARNING, SEVERE, FATAL, ERROR, OTHER)
+  - Text search across all log entries
+  - Column visibility management (right-click menu)
+  - Resizable columns via drag
+  - Expandable metadata view per log entry
+- **History Loading** (v0.2.5):
+  - Load historical PVSS_II*.log files via "History" button
+  - Date picker with 24-hour time dropdowns
+  - Time range filtering for large log files
+  - Batch loading with progress indicator
+  - All settings persisted across sessions
+- **Integration**:
+  - WinCC OA Control extension support for automatic path detection
+  - Clickable file paths to open scripts in editor
+  - Three path detection modes: static, workspace, automatic
+
+### Configuration
+- `winccoaLogviewer.logPathSource`: Choose path detection mode (static, workspace, automatic)
+- `winccoaLogviewer.staticLogPath`: Manual log directory path
+- `winccoaLogviewer.logLevel`: Configurable logging (ERROR, WARN, INFO, DEBUG, TRACE)
+
+### Known Limitations
+- Performance degrades with 10,000+ events (no virtualized rendering yet)
+- File watcher menu bug: All entries disappear when clicking "Ignore"
+- Automatic path detection requires WinCC OA Control extension
+
+### Dependencies
+- WinCC OA Control extension (RichardJanisch.winccoa-core) - optional, for automatic path detection
+
+### Bug Fixes from Pre-Release
+- v0.2.2: Fixed log event ordering bug (parser buffer flush)
+- v0.2.3: Fixed UI theming issues in light mode
+- v0.2.4: Fixed settings persistence and checkbox double-toggle on Windows
+- v0.2.5: Added history loading with dark mode date picker support
+
+### Breaking Changes from 0.x
+- Extension ID publisher changed to RichardJanisch
+- Icon updated to unified WinCC OA LogViewer design (512px)
+- Minimum VS Code version: 1.80.0
+
+---
+
 ## [0.2.5] - 2025-12-29
 
 ### Added
