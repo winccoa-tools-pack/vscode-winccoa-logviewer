@@ -98,7 +98,7 @@ export class PathResolver {
      * Get log path from Core extension (automatic mode)
      */
     private static getAutomaticPath(): string | undefined {
-        const coreExtension = vscode.extensions.getExtension('RichardJanisch.winccoa-control');
+        const coreExtension = vscode.extensions.getExtension('RichardJanisch.winccoa-project-admin');
         
         if (!coreExtension) {
             ExtensionOutputChannel.error('PathResolver', 'WinCC OA Core extension not found');
