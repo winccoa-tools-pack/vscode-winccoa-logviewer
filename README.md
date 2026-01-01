@@ -21,7 +21,7 @@
 
 ## 🎬 See It In Action
 
-![WinCC OA LogViewer Demo](resources/Animation.gif)
+![WinCC OA LogViewer Demo](https://github.com/winccoa-tools-pack/vscode-winccoa-logviewer/blob/develop/images/Animation.gif?raw=true)
 
 ---
 
