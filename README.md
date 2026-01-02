@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.2-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.3-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.107.1-007ACC.svg)
 
@@ -81,9 +81,12 @@
    - No virtualized rendering yet (planned for future release)
    - Recommendation: Use time range filtering when loading history
 
-2. **File Watcher Menu Bug** (minor):
-   - All log file entries disappear when clicking "Ignore" option
-   - Workaround: Reopen LogViewer panel
+2. **File Re-Activation Floods History** (known, not fixed):
+   - When deselecting and re-selecting a log file, all historical events are replayed
+   - Root cause: FileWatcher maintains file position even when file is unwatched
+   - Impact: Can cause duplicate entries in UI if file was previously watched
+   - Workaround: Clear logs after re-activation or avoid toggling files repeatedly
+   - Status: Will be fixed in future release
 
 3. **Log Event Ordering**:
    - Multi-line log events (with stacktraces) are correctly parsed since v0.2.2
@@ -97,7 +100,7 @@
 
 Found an issue? Please report it with:
 - WinCC OA version
-- Extension version (`1.0.2`)
+- Extension version (`1.0.3`)
 - Log file example that reproduces the issue
 - Enable `DEBUG` logging and attach log output
 

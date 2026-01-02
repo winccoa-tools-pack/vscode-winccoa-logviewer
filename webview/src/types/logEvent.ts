@@ -30,4 +30,5 @@ export interface LogEvent {
   message: string;          // Main message/description
   metadata?: LogMetadata;   // Structured additional information
   rawLines: string[];       // All raw lines for this event
+  sourceFile?: string;      // Source log file name (e.g., 'PVSS_II.log')
 }

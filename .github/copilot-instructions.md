@@ -44,7 +44,7 @@ vscode-winccoa-core (Zentrale Services)
 | Extension | Rolle | Status |
 |-----------|-------|--------|
 | **Core** | Zentrale Projekt-Verwaltung, Status Bar | v0.2.2 |
-| **LogViewer** | Echtzeit Log-Monitoring | v0.2.3 |
+| **LogViewer** | Echtzeit Log-Monitoring | v1.0.3 |
 | **Script Actions** | Script-Ausführung mit Argumenten | v0.3.1 |
 | **Test Explorer** | Unit-Test Integration | v0.2.2 |
 | **CTL Language** | Syntax, IntelliSense, Language Server | dev |
@@ -248,8 +248,15 @@ Definiert in `webview/src/index.css`:
 - ~~Timestamp Filtering~~ → **v0.2.5** (Load History Feature)
 
 ### 🔧 Offene Bugs
-1. **File-Watcher-Menü Bug** (minor): Alle Einträge verschwinden bei Ignorieren-Auswahl
-2. **Message-Hintergründe Light Mode** (enhancement): Bessere Lesbarkeit durch angepasste Hintergründe
+1. **File Re-Activation Floods History** (known, deferred): 
+   - Wenn man ein File deaktiviert und wieder aktiviert, werden alle historischen Logs nochmal eingefügt
+   - Root cause: FileWatcher behält file position auch wenn File unwatched ist
+   - Impact: Duplicate Events im Frontend bei Toggle
+   - Workaround: Clear logs nach re-activation
+   - Status: Wird später gefixt - file position muss beim unwatch resettet werden
+   
+2. **File-Watcher-Menü Bug** (minor): Alle Einträge verschwinden bei Ignorieren-Auswahl
+3. **Message-Hintergründe Light Mode** (enhancement): Bessere Lesbarkeit durch angepasste Hintergründe
 
 ### 🚀 Geplante Features
 1. **Export Log Events**: CSV/JSON Export-Funktion
@@ -324,8 +331,8 @@ body.vscode-dark input[type="date"] {
 - **.vscodeignore**: test-workspace/** excluded für saubere VSIX-Packages ohne Secrets
 - **Große Commits**: Bei User-Zustimmung auch 1000+ Dateien OK ("ne das passt schon")
 
-## Versionsstände (Stand: 2025-12-29)
-- **LogViewer**: v0.2.5 - Load History + Settings Persistence + 24h Time Picker
+## Versionsstände (Stand: 2026-01-02)
+- **LogViewer**: v1.0.3 - Backend file watching + sourceFile field
 - **CTL Language**: v0.3.0 - Member access navigation + comprehensive tests
 - **Script Actions**: v0.4.0 - Default commands with -n flag
 - **Test Explorer**: v0.2.4 - Cancel/Stop support
