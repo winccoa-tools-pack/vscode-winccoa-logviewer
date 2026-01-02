@@ -13,7 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Log File Filter**: Fixed bug where deselecting log files caused all logs to disappear instead of filtering correctly
   - Root cause: Log events did not contain source file information, filter compared `identifier` (e.g., "PVSS_II") with filenames (e.g., "PVSS_II.log")
   - Solution: Added `sourceFile` field to LogEvent, now properly filters logs by actual source file name
-  - Affected files: logEvent.ts, logFileWatcher.ts, App.tsx
+  - Architecture change: Backend FileWatcher now respects `watchedFiles` set, only processes selected files
+  - Affected files: logEvent.ts, logFileWatcher.ts, logViewerPanel.ts, App.tsx
+
+### Known Issues
+- **File Re-Activation Floods History**: When deselecting and re-selecting a log file, all historical events are replayed
+  - Root cause: FileWatcher maintains file position even when file is unwatched
+  - Impact: Can cause duplicate entries in UI if file was previously watched
+  - Workaround: Clear logs after re-activation or avoid toggling files repeatedly
+  - Status: Will be fixed in future release (reset file position on re-watch)
 
 ## [1.0.2] - 2026-01-01
 
