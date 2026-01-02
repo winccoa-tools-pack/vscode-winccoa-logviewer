@@ -120,6 +120,10 @@ export class LogViewerPanel {
                         ExtensionOutputChannel.info('LogViewerPanel', `Loading history: ${message.fileName}`);
                         this._loadHistory(message.fileName, message.fromTime, message.toTime);
                         return;
+                    case 'setWatchedFiles':
+                        ExtensionOutputChannel.debug('LogViewerPanel', `Setting watched files: ${message.files}`);
+                        this._setWatchedFiles(message.files);
+                        return;
                 }
             },
             null,
@@ -217,6 +221,17 @@ export class LogViewerPanel {
                 error: (error as Error).message
             });
         }
+    }
+
+    /**
+     * Set which files the watcher should monitor
+     */
+    private _setWatchedFiles(files: string[]): void {
+        if (!this._watcher) {
+            ExtensionOutputChannel.warn('LogViewerPanel', 'Cannot set watched files: no watcher');
+            return;
+        }
+        this._watcher.setWatchedFiles(files);
     }
 
     /**

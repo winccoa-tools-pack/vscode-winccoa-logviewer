@@ -13,6 +13,7 @@ export class LogFileWatcher {
     private onNewEventCallback: ((event: LogEvent) => void) | undefined;
     private isPaused = false;
     private isInitialized = false; // Track if initialization is complete
+    private watchedFiles = new Set<string>(); // Files currently being watched
 
     constructor(
         private logPath: string,
@@ -38,6 +39,15 @@ export class LogFileWatcher {
     }
 
     /**
+     * Set which log files should be watched
+     * @param fileNames Array of log file names to watch (e.g., ['PVSS_II.log', 'WCCOActrl_1.log'])
+     */
+    public setWatchedFiles(fileNames: string[]): void {
+        this.watchedFiles = new Set(fileNames);
+        ExtensionOutputChannel.info('LogFileWatcher', `Now watching ${fileNames.length} file(s): ${fileNames.join(', ')}`);
+    }
+
+    /**
      * Start watching the log directory
      */
     public async start(): Promise<void> {
@@ -59,6 +69,11 @@ export class LogFileWatcher {
         
         // Initialize file positions to current size (skip existing content)
         await this.initializeFilePositions();
+        
+        // By default, watch all available log files
+        const availableFiles = this.getAvailableLogFiles();
+        this.watchedFiles = new Set(availableFiles);
+        ExtensionOutputChannel.debug('LogFileWatcher', `Initially watching all ${availableFiles.length} files`);
         
         // Mark as initialized AFTER everything is set up
         this.isInitialized = true;
@@ -118,6 +133,13 @@ export class LogFileWatcher {
         // Ignore events until initialization is complete
         if (!this.isInitialized) {
             ExtensionOutputChannel.trace('LogFileWatcher', `Ignoring file change before initialization: ${path.basename(filePath)}`);
+            return;
+        }
+
+        // Check if this file is in the watchedFiles set
+        const fileName = path.basename(filePath);
+        if (!this.watchedFiles.has(fileName)) {
+            ExtensionOutputChannel.trace('LogFileWatcher', `Ignoring change in unwatched file: ${fileName}`);
             return;
         }
 
@@ -243,7 +265,7 @@ export class LogFileWatcher {
                         if (line.trim()) {
                             const events = (parser as GenericLogParser).parseLine(line);
                             events.forEach((event: LogEvent) => {
-                                this.emitEvent(event);
+                                this.emitEvent(event, fileName);
                                 eventCount++;
                             });
                         }
@@ -252,7 +274,7 @@ export class LogFileWatcher {
                     // CRITICAL: Flush the parser to emit the last event in buffer
                     const lastEvent = (parser as GenericLogParser).flush();
                     if (lastEvent) {
-                        this.emitEvent(lastEvent);
+                        this.emitEvent(lastEvent, fileName);
                         eventCount++;
                         ExtensionOutputChannel.trace('LogFileWatcher', `Flushed final event from parser for ${fileName}`);
                     }
@@ -289,7 +311,10 @@ export class LogFileWatcher {
     /**
      * Emit a parsed event
      */
-    private emitEvent(event: LogEvent): void {
+    private emitEvent(event: LogEvent, sourceFile?: string): void {
+        if (sourceFile) {
+            event.sourceFile = sourceFile;
+        }
         if (this.onNewEventCallback) {
             this.onNewEventCallback(event);
         }
@@ -401,6 +426,8 @@ export class LogFileWatcher {
             for (const line of lines) {
                 const parsedEvents = parser.parseLine(line);
                 for (const event of parsedEvents) {
+                    // Set source file
+                    event.sourceFile = fileName;
                     // Apply time filter if specified
                     if (this.isEventInTimeRange(event, fromDate, toDate)) {
                         events.push(event);
@@ -410,8 +437,11 @@ export class LogFileWatcher {
             
             // Flush final event
             const lastEvent = parser.flush();
-            if (lastEvent && this.isEventInTimeRange(lastEvent, fromDate, toDate)) {
-                events.push(lastEvent);
+            if (lastEvent) {
+                lastEvent.sourceFile = fileName;
+                if (this.isEventInTimeRange(lastEvent, fromDate, toDate)) {
+                    events.push(lastEvent);
+                }
             }
             
             ExtensionOutputChannel.info('LogFileWatcher', `Loaded ${events.length} events from history (${lines.length} lines)`);

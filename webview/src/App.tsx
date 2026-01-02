@@ -377,7 +377,17 @@ function App() {
           if (settings) {
             if (settings.newestFirst !== undefined) setNewestFirst(settings.newestFirst);
             if (settings.autoExpandAll !== undefined) setAutoExpandAll(settings.autoExpandAll);
-            if (settings.selectedLogFiles) setSelectedLogFiles(new Set(settings.selectedLogFiles));
+            if (settings.selectedLogFiles) {
+              const restoredFiles = new Set<string>(settings.selectedLogFiles);
+              setSelectedLogFiles(restoredFiles);
+              // Send watched files to backend immediately after restore
+              if (vscode) {
+                vscode.postMessage({ 
+                  command: 'setWatchedFiles', 
+                  files: Array.from(restoredFiles)
+                });
+              }
+            }
             if (settings.severityFilter) setSeverityFilter(new Set(settings.severityFilter));
             if (settings.columnVisibility) setColumnVisibility(settings.columnVisibility);
             if (settings.columnWidths) setColumnWidths(settings.columnWidths);
@@ -459,6 +469,12 @@ function App() {
         historyEndTime: endTime,
       };
       vscode.postMessage({ command: 'saveSettings', settings });
+      
+      // Also send watched files to backend
+      vscode.postMessage({ 
+        command: 'setWatchedFiles', 
+        files: Array.from(selectedLogFiles) 
+      });
     }
   }, [newestFirst, autoExpandAll, selectedLogFiles, severityFilter, columnVisibility, columnWidths, selectedHistoryFile, startDate, startTime, endDate, endTime, vscode]);
 
@@ -477,13 +493,9 @@ function App() {
   // Gefilterte und gesuchte Logs
   const filteredLogs = useMemo(() => {
     const filtered = allLogs.filter(log => {
-      // Log file filter (based on identifier or source file)
-      if (selectedLogFiles.size > 0) {
-        // Check if log's identifier or source matches selected files
-        const logSource = log.identifier; // or extract from metadata if needed
-        if (!selectedLogFiles.has(logSource) && selectedLogFiles.size < availableLogFiles.length) {
-          return false;
-        }
+      // Log file filter (filter already received events from deselected files)
+      if (selectedLogFiles.size > 0 && log.sourceFile && !selectedLogFiles.has(log.sourceFile)) {
+        return false;
       }
       
       // Severity Filter
@@ -505,7 +517,7 @@ function App() {
     
     // Apply log order: if newestFirst is false, reverse the array
     return newestFirst ? filtered : [...filtered].reverse();
-  }, [allLogs, severityFilter, searchTerm, selectedLogFiles, availableLogFiles, newestFirst]);
+  }, [allLogs, severityFilter, searchTerm, selectedLogFiles, newestFirst]);
 
   // Auto-expand SEVERE logs when filteredLogs change
   useEffect(() => {

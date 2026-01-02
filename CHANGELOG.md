@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-01-02
+
+### Fixed
+- **Log File Filter**: Fixed bug where deselecting log files caused all logs to disappear instead of filtering correctly
+  - Root cause: Log events did not contain source file information, filter compared `identifier` (e.g., "PVSS_II") with filenames (e.g., "PVSS_II.log")
+  - Solution: Added `sourceFile` field to LogEvent, now properly filters logs by actual source file name
+  - Affected files: logEvent.ts, logFileWatcher.ts, App.tsx
+
 ## [1.0.2] - 2026-01-01
 
 ### Changed
