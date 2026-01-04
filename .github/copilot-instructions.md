@@ -331,11 +331,32 @@ body.vscode-dark input[type="date"] {
 - **.vscodeignore**: test-workspace/** excluded für saubere VSIX-Packages ohne Secrets
 - **Große Commits**: Bei User-Zustimmung auch 1000+ Dateien OK ("ne das passt schon")
 
-## Versionsstände (Stand: 2026-01-02)
-- **LogViewer**: v1.0.3 - Backend file watching + sourceFile field
-- **CTL Language**: v0.3.0 - Member access navigation + comprehensive tests
-- **Script Actions**: v0.4.0 - Default commands with -n flag
-- **Test Explorer**: v0.2.4 - Cancel/Stop support
+## Makefile Automation
+
+### Version Badge Auto-Update (seit 2026-01-04)
+Alle Extensions haben automatische Version Badge Updates im `make package` Target:
+
+```makefile
+package: build
+	@echo "Packaging production release..."
+	@-$(MKDIR) $(BIN_DIR) 2>nul || echo "" >nul
+	@echo "Updating version badge in README.md..."
+	@node -e "const fs=require('fs'); let c=fs.readFileSync('README.md','utf8'); c=c.replace(/!\\[Version\\]\\(https:\\/\\/img\\.shields\\.io\\/badge\\/version-[^)]*\\)/,'![Version](https://img.shields.io/badge/version-$(VERSION)-blue.svg)'); fs.writeFileSync('README.md',c);"
+	@$(VSCE) package -o $(BIN_DIR)/$(EXTENSION_NAME)-$(VERSION).vsix
+	@echo "Extension packaged to $(BIN_DIR)/$(EXTENSION_NAME)-$(VERSION).vsix"
+```
+
+**Wichtig:**
+- Version Badge wird automatisch aktualisiert - NICHT manuell in README.md ändern!
+- Cross-platform: Node.js funktioniert auf Windows und Linux
+- Version kommt aus package.json (single source of truth)
+
+## Versionsstände (Stand: 2026-01-04)
+- **LogViewer**: v1.0.3 - Backend file watching + version badge automation
+- **CTL Language**: v1.2.0 - Scope-aware rename + keywords + version badge automation
+- **Script Actions**: v0.4.0 - Default commands + version badge automation
+- **Test Explorer**: v0.2.4 - Cancel/Stop + version badge automation
+- **Project Admin**: Latest - Version badge automation
 - **Core Extension**: v0.2.3 - PMON start/stop sequence fix
 
 ## Zusammenarbeit mit GitHub Copilot

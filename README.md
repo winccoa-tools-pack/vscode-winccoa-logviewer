@@ -16,6 +16,7 @@
 
 > **Disclaimer:**
 > This is the first stable release (v1.0.2) of the WinCC OA LogViewer extension. Not all features are fully implemented and some functions may not work perfectly yet. Please report any issues you encounter.
+> **Tip:** If the extension doesn't work as expected, try `Ctrl+Shift+P` → `Reload Window` to refresh.
 
 ---
 
