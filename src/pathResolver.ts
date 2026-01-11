@@ -26,7 +26,10 @@ export class PathResolver {
             case 'automatic':
                 return this.getAutomaticPath();
             default:
-                ExtensionOutputChannel.warn('PathResolver', `Unknown log path source: ${source}, falling back to workspace`);
+                ExtensionOutputChannel.warn(
+                    'PathResolver',
+                    `Unknown log path source: ${source}, falling back to workspace`,
+                );
                 return this.getWorkspacePath();
         }
     }
@@ -41,16 +44,19 @@ export class PathResolver {
         if (!staticPath || staticPath.trim() === '') {
             ExtensionOutputChannel.error('PathResolver', 'Static log path is not configured');
             vscode.window.showWarningMessage(
-                'WinCC OA LogViewer: Static log path is not configured. Please set "winccoaLogviewer.staticLogPath" in settings.'
+                'WinCC OA LogViewer: Static log path is not configured. Please set "winccoaLogviewer.staticLogPath" in settings.',
             );
             return undefined;
         }
 
         // Validate that path exists
         if (!fs.existsSync(staticPath)) {
-            ExtensionOutputChannel.error('PathResolver', `Static log path does not exist: ${staticPath}`);
+            ExtensionOutputChannel.error(
+                'PathResolver',
+                `Static log path does not exist: ${staticPath}`,
+            );
             vscode.window.showWarningMessage(
-                `WinCC OA LogViewer: Static log path does not exist: ${staticPath}`
+                `WinCC OA LogViewer: Static log path does not exist: ${staticPath}`,
             );
             return undefined;
         }
@@ -68,7 +74,7 @@ export class PathResolver {
         if (!workspaceFolders || workspaceFolders.length === 0) {
             ExtensionOutputChannel.error('PathResolver', 'No workspace folder open');
             vscode.window.showWarningMessage(
-                'WinCC OA LogViewer: No workspace folder is open. Please open a workspace or configure a static log path.'
+                'WinCC OA LogViewer: No workspace folder is open. Please open a workspace or configure a static log path.',
             );
             return undefined;
         }
@@ -80,16 +86,21 @@ export class PathResolver {
 
             // Check if log directory exists in this workspace folder
             if (fs.existsSync(logPath)) {
-                ExtensionOutputChannel.info('PathResolver', `Using workspace-derived log path: ${logPath}`);
+                ExtensionOutputChannel.info(
+                    'PathResolver',
+                    `Using workspace-derived log path: ${logPath}`,
+                );
                 return logPath;
             }
         }
 
         // No log directory found in any workspace folder
-        const firstWorkspace = workspaceFolders[0].uri.fsPath;
-        ExtensionOutputChannel.error('PathResolver', `Log directory does not exist in any workspace folder: ${workspaceFolders.map(f => f.uri.fsPath).join(', ')}`);
+        ExtensionOutputChannel.error(
+            'PathResolver',
+            `Log directory does not exist in any workspace folder: ${workspaceFolders.map((f) => f.uri.fsPath).join(', ')}`,
+        );
         vscode.window.showWarningMessage(
-            `WinCC OA LogViewer: Log directory not found in any workspace folder. Please ensure one of your workspace folders contains a 'log' folder or configure a different path source.`
+            `WinCC OA LogViewer: Log directory not found in any workspace folder. Please ensure one of your workspace folders contains a 'log' folder or configure a different path source.`,
         );
         return undefined;
     }
@@ -98,8 +109,10 @@ export class PathResolver {
      * Get log path from Core extension (automatic mode)
      */
     private static getAutomaticPath(): string | undefined {
-        const coreExtension = vscode.extensions.getExtension('RichardJanisch.winccoa-project-admin');
-        
+        const coreExtension = vscode.extensions.getExtension(
+            'RichardJanisch.winccoa-project-admin',
+        );
+
         if (!coreExtension) {
             ExtensionOutputChannel.error('PathResolver', 'WinCC OA Core extension not found');
             vscode.window.showErrorMessage(
@@ -117,16 +130,19 @@ export class PathResolver {
         const currentProject = coreApi.getCurrentProject();
 
         if (!currentProject) {
-            ExtensionOutputChannel.warn('PathResolver', 'No WinCC OA project selected in Core extension');
+            ExtensionOutputChannel.warn(
+                'PathResolver',
+                'No WinCC OA project selected in Core extension',
+            );
             vscode.window.showWarningMessage(
                 'No WinCC OA project selected. Please select a project using the WinCC OA status bar.',
             );
             return undefined;
         }
 
-        const projectDir = currentProject.projectDir.replace(/[\/]+$/, ''); // Remove trailing slashes
+        const projectDir = currentProject.projectDir.replace(/[/]+$/, ''); // Remove trailing slashes
         const logPath = `${projectDir}/log`;
-        
+
         if (!fs.existsSync(logPath)) {
             ExtensionOutputChannel.warn('PathResolver', `Log directory does not exist: ${logPath}`);
             vscode.window.showWarningMessage(
@@ -135,7 +151,10 @@ export class PathResolver {
             return undefined;
         }
 
-        ExtensionOutputChannel.debug('PathResolver', `Automatic mode - Project: ${currentProject.name}, Log path: ${logPath}`);
+        ExtensionOutputChannel.debug(
+            'PathResolver',
+            `Automatic mode - Project: ${currentProject.name}, Log path: ${logPath}`,
+        );
         return logPath;
     }
 
@@ -153,7 +172,11 @@ export class PathResolver {
             ExtensionOutputChannel.trace('PathResolver', `Path validated successfully: ${logPath}`);
             return true;
         } catch (error) {
-            ExtensionOutputChannel.error('PathResolver', `Path validation failed: ${logPath}`, error as Error);
+            ExtensionOutputChannel.error(
+                'PathResolver',
+                `Path validation failed: ${logPath}`,
+                error as Error,
+            );
             return false;
         }
     }

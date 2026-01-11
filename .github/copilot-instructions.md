@@ -34,6 +34,7 @@ vscode-winccoa-core (Zentrale Services)
 ```
 
 **Wichtige Beziehungen:**
+
 - **Core** → Alle anderen Extensions (optional oder required)
 - **Script Actions** → Test Explorer (für Test-Ausführung)
 - **LogViewer** → Core (für automatische Projekt-Erkennung, optional)
@@ -41,22 +42,23 @@ vscode-winccoa-core (Zentrale Services)
 
 ### Extension-Rollen
 
-| Extension | Rolle | Status |
-|-----------|-------|--------|
-| **Core** | Zentrale Projekt-Verwaltung, Status Bar | v0.2.2 |
-| **LogViewer** | Echtzeit Log-Monitoring | v1.0.3 |
-| **Script Actions** | Script-Ausführung mit Argumenten | v0.3.1 |
-| **Test Explorer** | Unit-Test Integration | v0.2.2 |
-| **CTL Language** | Syntax, IntelliSense, Language Server | dev |
-| **Side Panel** | Custom UI Panel | dev |
-| **npm-shared** | Gemeinsame WinCC OA Kommunikation | core lib |
+| Extension          | Rolle                                   | Status   |
+| ------------------ | --------------------------------------- | -------- |
+| **Core**           | Zentrale Projekt-Verwaltung, Status Bar | v0.2.2   |
+| **LogViewer**      | Echtzeit Log-Monitoring                 | v1.0.3   |
+| **Script Actions** | Script-Ausführung mit Argumenten        | v0.3.1   |
+| **Test Explorer**  | Unit-Test Integration                   | v0.2.2   |
+| **CTL Language**   | Syntax, IntelliSense, Language Server   | dev      |
+| **Side Panel**     | Custom UI Panel                         | dev      |
+| **npm-shared**     | Gemeinsame WinCC OA Kommunikation       | core lib |
 
 ## Projektübersicht (LogViewer)
 
 Der **WinCC OA LogViewer** ist eine VS Code Extension für Echtzeit-Überwachung und Analyse von WinCC OA Log-Dateien.
 
 ### Kernfunktionen
-- Echtzeit-Monitoring von Log-Dateien (PVSS_II.log, WCCOActrl*.log, etc.)
+
+- Echtzeit-Monitoring von Log-Dateien (PVSS_II.log, WCCOActrl\*.log, etc.)
 - Intelligentes Parsing von PVSS-Format und generischen Logs
 - Webview-basierte UI mit React/Vite
 - Filter nach Severity-Level (DEBUG, INFO, WARNING, FATAL, SEVERE, OTHER)
@@ -64,12 +66,14 @@ Der **WinCC OA LogViewer** ist eine VS Code Extension für Echtzeit-Überwachung
 - Automatische Projekt-Erkennung via Core Extension
 
 ### Abhängigkeiten
+
 - **WinCC OA Core Extension** (optional): Für automatische Projekt-Erkennung
 - **NPM Shared Library**: Gemeinsame Kommunikations-Layer (nicht direkt verwendet im LogViewer)
 
 ## Projektarchitektur
 
 ### Struktur
+
 ```
 vscode-winccoa-logviewer/
 ├── src/                          # Extension Backend (TypeScript)
@@ -95,6 +99,7 @@ vscode-winccoa-logviewer/
 ### Technische Schlüsselkomponenten
 
 #### 1. LogFileWatcher (`src/logFileWatcher.ts`)
+
 - **FileSystemWatcher**: Überwacht `*.log` Dateien mit `onDidChange/onCreate`
 - **File Positions**: `Map<string, number>` trackt Read-Position pro Datei
 - **Line Buffers**: `Map<string, string>` speichert unvollständige Zeilen
@@ -102,17 +107,18 @@ vscode-winccoa-logviewer/
 - **Initialization**: Watcher muss VOR `initializeFilePositions()` erstellt werden (Race Condition Fix v0.2.1)
 
 #### 2. LogParser (`src/logParser.ts`)
+
 - **CRITICAL**: **Stateful Parser** mit internem Buffer!
-  - `parseLine(line)` gibt nur COMPLETED events zurück
-  - Das letzte Event bleibt im `currentEvent` Buffer
-  - **MUSS** `flush()` nach allen Zeilen aufrufen, sonst fehlt letztes Event!
-  - Bug v0.2.2: Ohne flush() erscheinen Events in falscher Reihenfolge
+    - `parseLine(line)` gibt nur COMPLETED events zurück
+    - Das letzte Event bleibt im `currentEvent` Buffer
+    - **MUSS** `flush()` nach allen Zeilen aufrufen, sonst fehlt letztes Event!
+    - Bug v0.2.2: Ohne flush() erscheinen Events in falscher Reihenfolge
 
 ```typescript
 // CORRECT Usage Pattern:
 for (const line of lines) {
     const events = parser.parseLine(line);
-    events.forEach(event => this.emitEvent(event));
+    events.forEach((event) => this.emitEvent(event));
 }
 // CRITICAL: Flush final event!
 const lastEvent = parser.flush();
@@ -123,11 +129,13 @@ if (lastEvent) this.emitEvent(lastEvent);
 - **Metadata**: Parst Script, Library, Line, Stacktrace aus Folgezeilen
 
 #### 3. Webview Panel (`src/logViewerPanel.ts`)
+
 - **vscode.WebviewPanel**: Hosted React App
 - **Message Passing**: `postMessage()` zwischen Extension ↔ Webview
 - **Commands**: `newLogEvent`, `availableLogFiles`, `ready`, `setPaused`
 
 #### 4. React Frontend (`webview/src/App.tsx`)
+
 - **VSCode Webview UI Toolkit**: Native VS Code Komponenten
 - **Severity Filter**: Toggle-Buttons mit Theme-angepassten Farben
 - **Column Visibility**: Rechtsklick-Menü für Spaltenauswahl
@@ -136,6 +144,7 @@ if (lastEvent) this.emitEvent(lastEvent);
 - **File Links**: Klickbar → öffnet Dateien in Editor
 
 ### Build-System
+
 - **TypeScript**: Kompiliert Extension Code (`tsc -p .`)
 - **Vite**: Bündelt React Webview (`cd webview && npm run build`)
 - **Watch Mode**: `npm run watch` für Live-Entwicklung
@@ -144,6 +153,7 @@ if (lastEvent) this.emitEvent(lastEvent);
 ## Workflow-Regeln
 
 ### 1. Feature-Entwicklung
+
 ```bash
 # 1. Feature starten (automatisch)
 git flow feature start <feature-name-x.y.z>
@@ -163,6 +173,7 @@ git flow feature finish <feature-name-x.y.z>
 ```
 
 ### 2. Commit-Präfixe (Conventional Commits)
+
 - `feat:` - Neues Feature (MINOR Version bump)
 - `fix:` - Bug Fix (PATCH Version bump)
 - `perf:` - Performance Verbesserung
@@ -172,12 +183,15 @@ git flow feature finish <feature-name-x.y.z>
 - `chore:` - Build/Tooling Änderungen
 
 ### 3. Compile-Zyklus
+
 **IMMER** nach Code-Änderungen:
+
 ```bash
 npm run compile  # Baut Extension + Webview
 ```
 
 ### 4. Testing
+
 ```bash
 make test-local  # Erstellt VSIX und öffnet Test-Extension-Host
 ```
@@ -185,13 +199,14 @@ make test-local  # Erstellt VSIX und öffnet Test-Extension-Host
 ## Wichtige technische Details
 
 ### Parser Flush Pattern (CRITICAL!)
+
 **Problem**: Stateful Parser hält letztes Event im Buffer
 **Lösung**: Immer `flush()` nach allen `parseLine()` Aufrufen
 
 ```typescript
 // In logFileWatcher.ts - BEIDE Parser!
 const events = parser.parseLine(line);
-events.forEach(event => this.emitEvent(event));
+events.forEach((event) => this.emitEvent(event));
 
 // CRITICAL: Nach ALLEN Zeilen!
 const lastEvent = parser.flush();
@@ -201,6 +216,7 @@ if (lastEvent) {
 ```
 
 ### File Watcher Initialization (Race Condition Fix)
+
 **Problem**: Events während Initialization wurden ignoriert
 **Lösung**: Watcher VOR `initializeFilePositions()` erstellen
 
@@ -213,21 +229,24 @@ this.isInitialized = true;
 ```
 
 ### Webview Theming (Light/Dark Mode)
+
 **Problem**: VS Code CSS-Variablen passen sich automatisch ans Theme an
 **Lösung**: Nutze `var(--vscode-*)` für adaptive Farben
 
 ```tsx
 // Filter-Buttons (v0.2.3)
-backgroundColor: isActive ? 'var(--severity-*-bg)' : 'transparent'
-color: isActive ? 'var(--severity-*)' : 'var(--vscode-button-secondaryForeground)'
-border: isActive ? `1px solid color` : '1px solid var(--vscode-panel-border)'
+backgroundColor: isActive ? 'var(--severity-*-bg)' : 'transparent';
+color: isActive ? 'var(--severity-*)' : 'var(--vscode-button-secondaryForeground)';
+border: isActive ? `1px solid color` : '1px solid var(--vscode-panel-border)';
 
 // Header-Text
-color: 'var(--vscode-foreground)' // schwarz in light, weiß in dark
+color: 'var(--vscode-foreground)'; // schwarz in light, weiß in dark
 ```
 
 ### Severity Colors (CSS Variables)
+
 Definiert in `webview/src/index.css`:
+
 ```css
 --severity-error: #f48771;
 --severity-severe: #ff6b6b;
@@ -240,6 +259,7 @@ Definiert in `webview/src/index.css`:
 ## Aktuelle Probleme und To-Dos
 
 ### ✅ Gelöste Issues
+
 - ~~LogViewer zeigt nicht alle Zeilen~~ → **v0.2.2** (Parser flush() fix)
 - ~~File Watcher Race Condition~~ → **v0.2.1** (Initialization order)
 - ~~Filter-Buttons zu dunkel in Light Mode~~ → **v0.2.3** (Transparent background)
@@ -248,17 +268,18 @@ Definiert in `webview/src/index.css`:
 - ~~Timestamp Filtering~~ → **v0.2.5** (Load History Feature)
 
 ### 🔧 Offene Bugs
-1. **File Re-Activation Floods History** (known, deferred): 
-   - Wenn man ein File deaktiviert und wieder aktiviert, werden alle historischen Logs nochmal eingefügt
-   - Root cause: FileWatcher behält file position auch wenn File unwatched ist
-   - Impact: Duplicate Events im Frontend bei Toggle
-   - Workaround: Clear logs nach re-activation
-   - Status: Wird später gefixt - file position muss beim unwatch resettet werden
-   
+
+1. **File Re-Activation Floods History** (known, deferred):
+    - Wenn man ein File deaktiviert und wieder aktiviert, werden alle historischen Logs nochmal eingefügt
+    - Root cause: FileWatcher behält file position auch wenn File unwatched ist
+    - Impact: Duplicate Events im Frontend bei Toggle
+    - Workaround: Clear logs nach re-activation
+    - Status: Wird später gefixt - file position muss beim unwatch resettet werden
 2. **File-Watcher-Menü Bug** (minor): Alle Einträge verschwinden bei Ignorieren-Auswahl
 3. **Message-Hintergründe Light Mode** (enhancement): Bessere Lesbarkeit durch angepasste Hintergründe
 
 ### 🚀 Geplante Features
+
 1. **Export Log Events**: CSV/JSON Export-Funktion
 2. **Log-Level Highlighting**: Farbige Zeilen-Hintergründe nach Severity
 3. **Performance**: Virtualized List für große Log-Mengen (10k+ Events)
@@ -267,6 +288,7 @@ Definiert in `webview/src/index.css`:
 ## Technische Erkenntnisse
 
 ### Settings Persistenz (v0.2.4+)
+
 - **workspaceState** für UI-Settings nutzen (nicht globalState)
 - Settings beim Panel-Open via `restoreSettings` Message senden
 - Im Webview: Settings im `useEffect` speichern bei Änderungen
@@ -283,17 +305,19 @@ setSelectedLogFiles(prev => prev.size > 0 ? prev : new Set(message.files));
 ```
 
 ### Native HTML Controls in Webviews (v0.2.5)
+
 - **Date Picker Dark Mode**: `color-scheme: dark` in CSS für native Inputs
 - VS Code setzt `body.vscode-dark` / `body.vscode-light` Klassen
 - **24h Format**: Browser-Default ist locale-abhängig, besser eigene Dropdowns bauen
 
 ```css
-body.vscode-dark input[type="date"] {
-  color-scheme: dark;
+body.vscode-dark input[type='date'] {
+    color-scheme: dark;
 }
 ```
 
 ### Batch Loading für große Dateien
+
 - History-Files können groß sein (MB)
 - Events in Batches von 100 senden mit Progress-Updates
 - Modal erst schließen wenn 100% erreicht
@@ -301,20 +325,24 @@ body.vscode-dark input[type="date"] {
 ## Best Practices
 
 ### Code-Editing
+
 - **Multi-Replace nutzen**: Bei mehreren unabhängigen Edits → `multi_replace_string_in_file`
 - **3-5 Zeilen Kontext**: Immer genug Code um/nach Edit-Stelle inkludieren
 - **Keine Platzhalter**: Niemals `...existing code...` in oldString/newString
 
 ### Debugging
+
 - **Extension Output**: `ExtensionOutputChannel.debug/trace/error()` nutzen
 - **Launch Config**: `.vscode/launch.json` hat Debug-Profile
 - **Developer Tools**: Webview Debugging mit F1 → "Toggle Developer Tools"
 
 ### Testing
+
 - **Local VSIX**: `make test-local` für manuelle Tests
 - **Mock Data**: `generateMockLogEvents()` für Webview-Entwicklung ohne Backend
 
 ### Git Workflow (CRITICAL)
+
 - **Working Tree sauber halten**: Vor `git flow feature finish` immer `git status` prüfen
 - **Runtime Changes stashen**: DB-Dateien, Build-Artefakte vor Feature-Finish mit `git stash` entfernen
 - **Nie ohne User-Freigabe committen**: Erst bei "Go" vom User den finalen Commit machen
@@ -323,17 +351,20 @@ body.vscode-dark input[type="date"] {
 ## Test-Workspace Management (Best Practices)
 
 ### Directory Structure
+
 - **test-workspace auf Root-Level**: Neben Extension-Ordnern, nicht darin verschachtelt
 - **Self-contained Fixtures**: Alle Test-Dateien im Repository für reproduzierbare Tests
 
 ### Git & VSIX
+
 - **.gitignore für Runtime**: DB-Dateien, Logs als Runtime-Artefakte nicht committen
-- **.vscodeignore**: test-workspace/** excluded für saubere VSIX-Packages ohne Secrets
+- **.vscodeignore**: test-workspace/\*\* excluded für saubere VSIX-Packages ohne Secrets
 - **Große Commits**: Bei User-Zustimmung auch 1000+ Dateien OK ("ne das passt schon")
 
 ## Makefile Automation
 
 ### Version Badge Auto-Update (seit 2026-01-04)
+
 Alle Extensions haben automatische Version Badge Updates im `make package` Target:
 
 ```makefile
@@ -347,11 +378,13 @@ package: build
 ```
 
 **Wichtig:**
+
 - Version Badge wird automatisch aktualisiert - NICHT manuell in README.md ändern!
 - Cross-platform: Node.js funktioniert auf Windows und Linux
 - Version kommt aus package.json (single source of truth)
 
 ## Versionsstände (Stand: 2026-01-04)
+
 - **LogViewer**: v1.0.3 - Backend file watching + version badge automation
 - **CTL Language**: v1.2.0 - Scope-aware rename + keywords + version badge automation
 - **Script Actions**: v0.4.0 - Default commands + version badge automation
@@ -362,6 +395,7 @@ package: build
 ## Zusammenarbeit mit GitHub Copilot
 
 ### Erwartungen
+
 - **Strukturiert arbeiten**: Klare Workflows, kein Code-Chaos
 - **Kompilieren nach Änderungen**: Immer `npm run compile`
 - **Git Flow einhalten**: Feature Branches, semantische Commits
@@ -369,6 +403,7 @@ package: build
 - **Testen vor Merge**: "Go" vom User abwarten
 
 ### Communication Style
+
 - **Deutsch**: Primäre Sprache für Kommunikation
 - **Englisch**: Code, Commits, Dokumentation
 - **Knapp & präzise**: Keine unnötigen Erklärungen

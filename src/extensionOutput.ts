@@ -5,7 +5,7 @@ export enum LogLevel {
     WARN = 1,
     INFO = 2,
     DEBUG = 3,
-    TRACE = 4
+    TRACE = 4,
 }
 
 const LOG_LEVEL_NAMES: Record<LogLevel, string> = {
@@ -13,7 +13,7 @@ const LOG_LEVEL_NAMES: Record<LogLevel, string> = {
     [LogLevel.WARN]: 'WARN',
     [LogLevel.INFO]: 'INFO',
     [LogLevel.DEBUG]: 'DEBUG',
-    [LogLevel.TRACE]: 'TRACE'
+    [LogLevel.TRACE]: 'TRACE',
 };
 
 const LOG_LEVEL_ICONS: Record<LogLevel, string> = {
@@ -21,7 +21,7 @@ const LOG_LEVEL_ICONS: Record<LogLevel, string> = {
     [LogLevel.WARN]: '⚠️',
     [LogLevel.INFO]: 'ℹ️',
     [LogLevel.DEBUG]: '🔍',
-    [LogLevel.TRACE]: '🔬'
+    [LogLevel.TRACE]: '🔬',
 };
 
 export class ExtensionOutputChannel {
@@ -30,20 +30,22 @@ export class ExtensionOutputChannel {
 
     public static initialize(): vscode.OutputChannel {
         if (!ExtensionOutputChannel.instance) {
-            ExtensionOutputChannel.instance = vscode.window.createOutputChannel('WinCC OA LogViewer');
+            ExtensionOutputChannel.instance =
+                vscode.window.createOutputChannel('WinCC OA LogViewer');
         }
-        
+
         // Read log level from configuration
         ExtensionOutputChannel.updateLogLevel();
-        
+
         return ExtensionOutputChannel.instance;
     }
 
     public static updateLogLevel(): void {
         const config = vscode.workspace.getConfiguration('winccoaLogviewer');
         const levelString = config.get<string>('logLevel', 'INFO');
-        ExtensionOutputChannel.currentLogLevel = LogLevel[levelString as keyof typeof LogLevel] || LogLevel.INFO;
-        
+        ExtensionOutputChannel.currentLogLevel =
+            LogLevel[levelString as keyof typeof LogLevel] || LogLevel.INFO;
+
         ExtensionOutputChannel.log(LogLevel.INFO, 'Logger', `Log level set to: ${levelString}`);
     }
 
@@ -56,16 +58,16 @@ export class ExtensionOutputChannel {
         const levelName = LOG_LEVEL_NAMES[level].padEnd(5);
         const icon = LOG_LEVEL_ICONS[level];
         const formattedSource = source.padEnd(20);
-        
+
         let logMessage = `[${timestamp}] ${icon} ${levelName} [${formattedSource}] ${message}`;
-        
+
         // Add stack trace for errors if available
         if (error && level === LogLevel.ERROR) {
             logMessage += `\n    Stack: ${error.stack || error.message}`;
         }
-        
+
         ExtensionOutputChannel.instance.appendLine(logMessage);
-        
+
         // Auto-show output on errors
         if (level === LogLevel.ERROR) {
             ExtensionOutputChannel.instance.show(true);
@@ -89,7 +91,7 @@ export class ExtensionOutputChannel {
         ExtensionOutputChannel.log(LogLevel.DEBUG, source, message);
     }
 
-    public static trace(source: string, message: string, data?: any): void {
+    public static trace(source: string, message: string, data?: unknown): void {
         let msg = message;
         if (data !== undefined) {
             msg += `\n    Data: ${JSON.stringify(data, null, 2)}`;

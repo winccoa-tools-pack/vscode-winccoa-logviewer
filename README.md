@@ -29,13 +29,15 @@
 ## ✨ Features
 
 ### 📊 Real-Time Log Monitoring
+
 - **Live file watching**: Automatic updates when log files change
 - **PVSS_II.log parsing**: Smart parsing of WinCC OA log format with metadata extraction
-- **Multiple log files**: Monitor PVSS_II.log, WCCOActrl*.log, and custom log files
+- **Multiple log files**: Monitor PVSS_II.log, WCCOActrl\*.log, and custom log files
 - **Pause/Resume**: Control log streaming on demand
 - **Newest First**: Toggle to show most recent events first
 
 ### 🔍 Advanced Filtering & Analysis
+
 - **Severity Filtering**: Toggle DEBUG, INFO, WARNING, SEVERE, FATAL, ERROR, OTHER levels
 - **Text Search**: Search across all log entries
 - **Column Management**: Show/hide columns via right-click menu
@@ -43,12 +45,14 @@
 - **Expandable Metadata**: Click on log entry to view script path, library, line number, stacktrace
 
 ### 📜 History Loading
-- **Load History**: Browse and load historical PVSS_II*.log files
+
+- **Load History**: Browse and load historical PVSS_II\*.log files
 - **Time Range**: Filter logs by date and time (24-hour format)
 - **File Selection**: Choose from archived log files with size information
 - **Batch Loading**: Events loaded in batches with progress indicator
 
 ### 🚀 Smart Navigation
+
 - **Clickable File Paths**: Open scripts directly in editor from log metadata
 - **Integration**: Works seamlessly with WinCC OA Control extension for automatic path detection
 
@@ -58,16 +62,16 @@
 
 ### Essential Settings
 
-| Setting | Default | Description |
-|---------|---------|-------------|
+| Setting                          | Default     | Description                                                                                         |
+| -------------------------------- | ----------- | --------------------------------------------------------------------------------------------------- |
 | `winccoaLogviewer.logPathSource` | `automatic` | Path detection: `static` (manual), `workspace` (workspace/log), `automatic` (via Control extension) |
-| `winccoaLogviewer.staticLogPath` | - | Static log path (e.g., `C:/WinCC_OA/DevEnv/log` or `/opt/WinCC_OA/DevEnv/log`) |
+| `winccoaLogviewer.staticLogPath` | -           | Static log path (e.g., `C:/WinCC_OA/DevEnv/log` or `/opt/WinCC_OA/DevEnv/log`)                      |
 
 ### Logging (for debugging)
 
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `winccoaLogviewer.logLevel` | `INFO` | Log verbosity: `ERROR`, `WARN`, `INFO`, `DEBUG`, `TRACE` |
+| Setting                     | Default | Description                                              |
+| --------------------------- | ------- | -------------------------------------------------------- |
+| `winccoaLogviewer.logLevel` | `INFO`  | Log verbosity: `ERROR`, `WARN`, `INFO`, `DEBUG`, `TRACE` |
 
 💡 **Tip**: Set log level to `DEBUG` when reporting bugs for detailed diagnostics.
 
@@ -78,28 +82,29 @@
 ### Current Limitations
 
 1. **Performance with Large Logs**:
-   - UI can become slow with 10,000+ events
-   - No virtualized rendering yet (planned for future release)
-   - Recommendation: Use time range filtering when loading history
+    - UI can become slow with 10,000+ events
+    - No virtualized rendering yet (planned for future release)
+    - Recommendation: Use time range filtering when loading history
 
 2. **File Re-Activation Floods History** (known, not fixed):
-   - When deselecting and re-selecting a log file, all historical events are replayed
-   - Root cause: FileWatcher maintains file position even when file is unwatched
-   - Impact: Can cause duplicate entries in UI if file was previously watched
-   - Workaround: Clear logs after re-activation or avoid toggling files repeatedly
-   - Status: Will be fixed in future release
+    - When deselecting and re-selecting a log file, all historical events are replayed
+    - Root cause: FileWatcher maintains file position even when file is unwatched
+    - Impact: Can cause duplicate entries in UI if file was previously watched
+    - Workaround: Clear logs after re-activation or avoid toggling files repeatedly
+    - Status: Will be fixed in future release
 
 3. **Log Event Ordering**:
-   - Multi-line log events (with stacktraces) are correctly parsed since v0.2.2
-   - Parser buffer is properly flushed to prevent ordering issues
+    - Multi-line log events (with stacktraces) are correctly parsed since v0.2.2
+    - Parser buffer is properly flushed to prevent ordering issues
 
 4. **Automatic Path Detection**:
-   - Requires WinCC OA Control extension installed and active
-   - Falls back to workspace or static path if Control not available
+    - Requires WinCC OA Control extension installed and active
+    - Falls back to workspace or static path if Control not available
 
 ### Reporting Bugs
 
 Found an issue? Please report it with:
+
 - WinCC OA version
 - Extension version (`1.0.3`)
 - Log file example that reproduces the issue
@@ -113,11 +118,12 @@ Found an issue? Please report it with:
 
 Access via `Ctrl+Shift+P`:
 
-| Command | Description |
-|---------|-------------|
+| Command                    | Description                                |
+| -------------------------- | ------------------------------------------ |
 | `WinCC OA: Open LogViewer` | Open log viewer panel and start monitoring |
 
 **Programmatic Access:**
+
 ```typescript
 vscode.commands.executeCommand('winccoa-logviewer.open', optionalLogPath);
 ```

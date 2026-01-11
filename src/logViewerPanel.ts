@@ -20,15 +20,18 @@ export class LogViewerPanel {
     public static createOrShow(context: vscode.ExtensionContext, logPath?: string) {
         LogViewerPanel._context = context;
         const extensionUri = context.extensionUri;
-        ExtensionOutputChannel.debug('LogViewerPanel', `createOrShow called with logPath: ${logPath}`);
-        
+        ExtensionOutputChannel.debug(
+            'LogViewerPanel',
+            `createOrShow called with logPath: ${logPath}`,
+        );
+
         // Always open in a new column to the side
         let column: vscode.ViewColumn;
-        
+
         if (vscode.window.activeTextEditor) {
             // If there's an active editor, open beside it
             const activeColumn = vscode.window.activeTextEditor.viewColumn || vscode.ViewColumn.One;
-            
+
             // Determine the next column
             if (activeColumn === vscode.ViewColumn.One) {
                 column = vscode.ViewColumn.Two;
@@ -45,19 +48,28 @@ export class LogViewerPanel {
 
         // Wenn es schon ein Panel gibt → nur zeigen
         if (LogViewerPanel.currentPanel) {
-            ExtensionOutputChannel.debug('LogViewerPanel', `Reusing existing panel in column ${column}`);
+            ExtensionOutputChannel.debug(
+                'LogViewerPanel',
+                `Reusing existing panel in column ${column}`,
+            );
             LogViewerPanel.currentPanel._panel.reveal(column);
-            
+
             // If new logPath provided, update watcher
             if (logPath) {
-                ExtensionOutputChannel.info('LogViewerPanel', `Updating watcher with new log path: ${logPath}`);
+                ExtensionOutputChannel.info(
+                    'LogViewerPanel',
+                    `Updating watcher with new log path: ${logPath}`,
+                );
                 LogViewerPanel.currentPanel.startWatching(logPath);
             }
             return;
         }
 
         // Neues Panel erzeugen
-        ExtensionOutputChannel.info('LogViewerPanel', `Creating new webview panel in column ${column}`);
+        ExtensionOutputChannel.info(
+            'LogViewerPanel',
+            `Creating new webview panel in column ${column}`,
+        );
         const panel = vscode.window.createWebviewPanel(
             'winccoaLogViewer',
             'WinCC OA Log Viewer',
@@ -65,17 +77,18 @@ export class LogViewerPanel {
             {
                 enableScripts: true, // React Bundle braucht JS
                 retainContextWhenHidden: true,
-                localResourceRoots: [
-                    vscode.Uri.joinPath(extensionUri, 'dist', 'webview'),
-                ],
-            }
+                localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'dist', 'webview')],
+            },
         );
 
         LogViewerPanel.currentPanel = new LogViewerPanel(panel, extensionUri, logPath);
     }
 
     private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, logPath?: string) {
-        ExtensionOutputChannel.trace('LogViewerPanel', `Constructor called with logPath: ${logPath}`);
+        ExtensionOutputChannel.trace(
+            'LogViewerPanel',
+            `Constructor called with logPath: ${logPath}`,
+        );
         this._panel = panel;
         this._extensionUri = extensionUri;
 
@@ -85,8 +98,11 @@ export class LogViewerPanel {
 
         // Message Handler für File-Clicks
         this._panel.webview.onDidReceiveMessage(
-            message => {
-                ExtensionOutputChannel.trace('LogViewerPanel', `Received webview message: ${message.command}`);
+            (message) => {
+                ExtensionOutputChannel.trace(
+                    'LogViewerPanel',
+                    `Received webview message: ${message.command}`,
+                );
                 switch (message.command) {
                     case 'openFile':
                         this._openFile(message.filePath, message.line);
@@ -101,11 +117,17 @@ export class LogViewerPanel {
                         }
                         return;
                     case 'setPaused':
-                        ExtensionOutputChannel.debug('LogViewerPanel', `Setting paused state: ${message.paused}`);
+                        ExtensionOutputChannel.debug(
+                            'LogViewerPanel',
+                            `Setting paused state: ${message.paused}`,
+                        );
                         this.setPaused(message.paused);
                         return;
                     case 'openSettings':
-                        ExtensionOutputChannel.debug('LogViewerPanel', 'Opening extension settings');
+                        ExtensionOutputChannel.debug(
+                            'LogViewerPanel',
+                            'Opening extension settings',
+                        );
                         this._openSettings();
                         return;
                     case 'saveSettings':
@@ -117,17 +139,23 @@ export class LogViewerPanel {
                         this._sendHistoryFiles();
                         return;
                     case 'loadHistory':
-                        ExtensionOutputChannel.info('LogViewerPanel', `Loading history: ${message.fileName}`);
+                        ExtensionOutputChannel.info(
+                            'LogViewerPanel',
+                            `Loading history: ${message.fileName}`,
+                        );
                         this._loadHistory(message.fileName, message.fromTime, message.toTime);
                         return;
                     case 'setWatchedFiles':
-                        ExtensionOutputChannel.debug('LogViewerPanel', `Setting watched files: ${message.files}`);
+                        ExtensionOutputChannel.debug(
+                            'LogViewerPanel',
+                            `Setting watched files: ${message.files}`,
+                        );
                         this._setWatchedFiles(message.files);
                         return;
                 }
             },
             null,
-            this._disposables
+            this._disposables,
         );
     }
 
@@ -140,7 +168,7 @@ export class LogViewerPanel {
             ExtensionOutputChannel.debug('LogViewerPanel', 'Sending persisted settings to webview');
             this._panel.webview.postMessage({
                 command: 'restoreSettings',
-                settings
+                settings,
             });
         }
     }
@@ -148,9 +176,12 @@ export class LogViewerPanel {
     /**
      * Save settings from webview to workspaceState
      */
-    private _saveSettings(settings: any): void {
+    private _saveSettings(settings: unknown): void {
         LogViewerPanel._context.workspaceState.update(LogViewerPanel.STATE_KEY, settings);
-        ExtensionOutputChannel.trace('LogViewerPanel', `Settings saved: ${JSON.stringify(settings)}`);
+        ExtensionOutputChannel.trace(
+            'LogViewerPanel',
+            `Settings saved: ${JSON.stringify(settings)}`,
+        );
     }
 
     /**
@@ -161,24 +192,28 @@ export class LogViewerPanel {
             ExtensionOutputChannel.warn('LogViewerPanel', 'Cannot get history files: no watcher');
             return;
         }
-        
+
         const files = this._watcher.getHistoryFiles();
         this._panel.webview.postMessage({
             command: 'historyFiles',
-            files: files.map(f => ({
+            files: files.map((f) => ({
                 name: f.name,
                 size: f.size,
                 modified: f.modified.toISOString(),
                 firstTimestamp: f.firstTimestamp,
-                lastTimestamp: f.lastTimestamp
-            }))
+                lastTimestamp: f.lastTimestamp,
+            })),
         });
     }
 
     /**
      * Load history from a specific file
      */
-    private async _loadHistory(fileName: string, fromTime?: string, toTime?: string): Promise<void> {
+    private async _loadHistory(
+        fileName: string,
+        fromTime?: string,
+        toTime?: string,
+    ): Promise<void> {
         if (!this._watcher) {
             ExtensionOutputChannel.warn('LogViewerPanel', 'Cannot load history: no watcher');
             return;
@@ -187,12 +222,12 @@ export class LogViewerPanel {
         // Send loading state
         this._panel.webview.postMessage({
             command: 'historyLoading',
-            loading: true
+            loading: true,
         });
 
         try {
             const events = await this._watcher.loadHistoryFile(fileName, fromTime, toTime);
-            
+
             // Send events in batches to avoid overwhelming the webview
             const batchSize = 100;
             for (let i = 0; i < events.length; i += batchSize) {
@@ -200,25 +235,24 @@ export class LogViewerPanel {
                 this._panel.webview.postMessage({
                     command: 'historyEvents',
                     events: batch,
-                    progress: Math.min(100, Math.round((i + batch.length) / events.length * 100))
+                    progress: Math.min(100, Math.round(((i + batch.length) / events.length) * 100)),
                 });
                 // Small delay between batches to allow UI to update
-                await new Promise(resolve => setTimeout(resolve, 10));
+                await new Promise((resolve) => setTimeout(resolve, 10));
             }
 
             // Send completion
             this._panel.webview.postMessage({
                 command: 'historyLoading',
                 loading: false,
-                totalEvents: events.length
+                totalEvents: events.length,
             });
-
         } catch (error) {
             ExtensionOutputChannel.error('LogViewerPanel', 'Error loading history', error as Error);
             this._panel.webview.postMessage({
                 command: 'historyLoading',
                 loading: false,
-                error: (error as Error).message
+                error: (error as Error).message,
             });
         }
     }
@@ -238,7 +272,10 @@ export class LogViewerPanel {
      * Set paused state of the watcher
      */
     public setPaused(paused: boolean): void {
-        ExtensionOutputChannel.debug('LogViewerPanel', `setPaused: ${paused}, hasWatcher: ${!!this._watcher}`);
+        ExtensionOutputChannel.debug(
+            'LogViewerPanel',
+            `setPaused: ${paused}, hasWatcher: ${!!this._watcher}`,
+        );
         if (this._watcher) {
             if (paused) {
                 this._watcher.pause();
@@ -252,14 +289,17 @@ export class LogViewerPanel {
      * Start watching log directory
      */
     public async startWatching(logPath: string): Promise<void> {
-        ExtensionOutputChannel.info('LogViewerPanel', `Starting to watch log directory: ${logPath}`);
-        
+        ExtensionOutputChannel.info(
+            'LogViewerPanel',
+            `Starting to watch log directory: ${logPath}`,
+        );
+
         // Check if already watching this path
         if (this._currentLogPath === logPath && this._watcher) {
             ExtensionOutputChannel.debug('LogViewerPanel', `Already watching path: ${logPath}`);
             return;
         }
-        
+
         // Stop existing watcher if any
         if (this._watcher) {
             ExtensionOutputChannel.debug('LogViewerPanel', 'Stopping existing watcher');
@@ -271,40 +311,53 @@ export class LogViewerPanel {
                 // Send event to webview
                 this._panel.webview.postMessage({
                     command: 'newLogEvent',
-                    event: event
+                    event: event,
                 });
             });
 
             await this._watcher.start();
-            
+
             this._currentLogPath = logPath;
-            
+
             // Send available log files to webview
             const availableFiles = this._watcher.getAvailableLogFiles();
-            ExtensionOutputChannel.debug('LogViewerPanel', `Sending ${availableFiles.length} log files to webview`);
+            ExtensionOutputChannel.debug(
+                'LogViewerPanel',
+                `Sending ${availableFiles.length} log files to webview`,
+            );
             this._panel.webview.postMessage({
                 command: 'availableLogFiles',
-                files: availableFiles
+                files: availableFiles,
             });
-            
-            ExtensionOutputChannel.success('LogViewerPanel', `Successfully started watching logs: ${logPath}`);
+
+            ExtensionOutputChannel.success(
+                'LogViewerPanel',
+                `Successfully started watching logs: ${logPath}`,
+            );
             vscode.window.showInformationMessage(`Watching logs in: ${logPath}`);
         } catch (error) {
             this._currentLogPath = undefined;
-            ExtensionOutputChannel.error('LogViewerPanel', `Failed to start watching logs: ${logPath}`, error as Error);
+            ExtensionOutputChannel.error(
+                'LogViewerPanel',
+                `Failed to start watching logs: ${logPath}`,
+                error as Error,
+            );
             vscode.window.showErrorMessage(`Failed to watch logs: ${error}`);
         }
     }
 
     private async _openFile(filePath: string, line?: number) {
-        ExtensionOutputChannel.info('LogViewerPanel', `Opening file: ${filePath}${line ? `:${line}` : ''}`);
+        ExtensionOutputChannel.info(
+            'LogViewerPanel',
+            `Opening file: ${filePath}${line ? `:${line}` : ''}`,
+        );
         try {
             // Versuche die Datei zu öffnen
             const uri = vscode.Uri.file(filePath);
             const doc = await vscode.workspace.openTextDocument(uri);
             const editor = await vscode.window.showTextDocument(doc, {
                 viewColumn: vscode.ViewColumn.One,
-                preview: false
+                preview: false,
             });
 
             // Wenn eine Zeile angegeben ist, springe dorthin
@@ -313,12 +366,16 @@ export class LogViewerPanel {
                 editor.selection = new vscode.Selection(position, position);
                 editor.revealRange(
                     new vscode.Range(position, position),
-                    vscode.TextEditorRevealType.InCenter
+                    vscode.TextEditorRevealType.InCenter,
                 );
             }
             ExtensionOutputChannel.debug('LogViewerPanel', `Successfully opened file: ${filePath}`);
         } catch (error) {
-            ExtensionOutputChannel.error('LogViewerPanel', `Failed to open file: ${filePath}`, error as Error);
+            ExtensionOutputChannel.error(
+                'LogViewerPanel',
+                `Failed to open file: ${filePath}`,
+                error as Error,
+            );
             vscode.window.showErrorMessage(`Could not open file: ${filePath}`);
         }
     }
@@ -339,19 +396,11 @@ export class LogViewerPanel {
 
     private _getHtmlForWebview(webview: vscode.Webview): string {
         // Basis-Ordner des gebauten React-Bundles
-        const webviewRoot = vscode.Uri.joinPath(
-            this._extensionUri,
-            'dist',
-            'webview'
-        );
+        const webviewRoot = vscode.Uri.joinPath(this._extensionUri, 'dist', 'webview');
 
         // Scripts and styles from vite build
-        const scriptUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(webviewRoot, 'main.js')
-        );
-        const styleUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(webviewRoot, 'index.css')
-        );
+        const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(webviewRoot, 'main.js'));
+        const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(webviewRoot, 'index.css'));
 
         const csp = [
             "default-src 'none';",

@@ -1,11 +1,11 @@
-import { LogEvent, LogSeverity, LogMetadata, StacktraceEntry } from './logEvent';
+import { LogEvent, LogSeverity, LogMetadata } from './logEvent';
 import { ExtensionOutputChannel } from './extensionOutput';
 
 /**
  * Parses WinCC OA PVSS_II.log format
- * 
+ *
  * Format: IDENTIFIER (NUM), YYYY.MM.DD HH:mm:ss.SSS, SCOPE, SEVERITY, MSGNUM, MESSAGE
- * 
+ *
  * Multi-line events can have:
  * - Script: <name>
  * - Library: <path>
@@ -26,14 +26,17 @@ export class LogParser {
 
         // Check if this is a main log line (starts with identifier)
         const mainLineMatch = this.parseMainLine(line);
-        
+
         if (mainLineMatch) {
             // We have a new main line, finish previous event if exists
             if (this.currentEvent) {
                 const completed = this.finalizeEvent();
                 if (completed) {
                     completedEvents.push(completed);
-                    ExtensionOutputChannel.trace('LogParser', `Completed log event: ${completed.identifier} - ${completed.severity}`);
+                    ExtensionOutputChannel.trace(
+                        'LogParser',
+                        `Completed log event: ${completed.identifier} - ${completed.severity}`,
+                    );
                 }
             }
 
@@ -69,22 +72,30 @@ export class LogParser {
     private parseMainLine(line: string): Partial<LogEvent> | null {
         // Trim the line first to handle any leading/trailing whitespace
         const trimmedLine = line.trim();
-        
+
         // Regex: IDENTIFIER + optional spaces + (NUM), + TIMESTAMP, + SCOPE, + SEVERITY, + MSGNUM, + MESSAGE
         // Note: \s* instead of \s+ to handle missing spaces ("PARAM,WARNING" and "WCCILdataSQLite(0)")
-        const regex = /^(\w+)\s*\((\d+)\),\s+(\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3}),\s*(\w+),\s*(\w+),\s+(.+)$/;
+        const regex =
+            /^(\w+)\s*\((\d+)\),\s+(\d{4}\.\d{2}\.\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3}),\s*(\w+),\s*(\w+),\s+(.+)$/;
         const match = trimmedLine.match(regex);
 
         if (!match) {
             // Only log if line looks like it could be PVSS format but didn't match
-            if (trimmedLine.includes('(') && trimmedLine.includes(')') && trimmedLine.includes(',')) {
-                ExtensionOutputChannel.debug('LogParser', `Failed to parse potential PVSS line: "${trimmedLine.substring(0, 80)}..."`);
+            if (
+                trimmedLine.includes('(') &&
+                trimmedLine.includes(')') &&
+                trimmedLine.includes(',')
+            ) {
+                ExtensionOutputChannel.debug(
+                    'LogParser',
+                    `Failed to parse potential PVSS line: "${trimmedLine.substring(0, 80)}..."`,
+                );
             }
             return null;
         }
 
         const [, identifier, , timestamp, scope, severity, rest] = match;
-        
+
         // Split rest into message number and message
         // Format: "     5, this is a warning" or "     5/ctrl, message"
         const restMatch = rest.match(/^\s*(\d+(?:\/\w+)?),\s*(.*)$/);
@@ -101,7 +112,7 @@ export class LogParser {
             severity: this.normalizeSeverity(severity.trim()),
             message: message.trim(),
             metadata: {},
-            rawLines: []
+            rawLines: [],
         };
     }
 
@@ -132,7 +143,7 @@ export class LogParser {
                     index: parseInt(index, 10),
                     functionName: functionName.trim(),
                     filePath: filePath.trim(),
-                    line: parseInt(line, 10)
+                    line: parseInt(line, 10),
                 });
             }
             return;
@@ -140,15 +151,20 @@ export class LogParser {
 
         // Check for inline Syntax error format
         // Format: "Syntax error, '}' unexpected, /path/to/file.ctl,   Line: 29"
-        if (this.currentEvent.message && this.currentEvent.message.toLowerCase().includes('syntax error')) {
+        if (
+            this.currentEvent.message &&
+            this.currentEvent.message.toLowerCase().includes('syntax error')
+        ) {
             // Try to extract file path and line from the message
-            const syntaxMatch = this.currentEvent.message.match(/^(.+?),\s*(.+?),\s*([^,]+),\s*Line:\s*(\d+)/);
+            const syntaxMatch = this.currentEvent.message.match(
+                /^(.+?),\s*(.+?),\s*([^,]+),\s*Line:\s*(\d+)/,
+            );
             if (syntaxMatch) {
                 const [, errorType, errorDetail, filePath, line] = syntaxMatch;
-                
+
                 // Update message to just the error part
                 this.currentEvent.message = `${errorType.trim()}, ${errorDetail.trim()}`;
-                
+
                 // Add file info to metadata
                 this.currentEvent.metadata.library = filePath.trim();
                 this.currentEvent.metadata.line = parseInt(line, 10);
@@ -193,7 +209,12 @@ export class LogParser {
         }
 
         // Everything else goes to raw
-        if (trimmed.length > 0 && !trimmed.startsWith('Script:') && !trimmed.startsWith('Library:') && !trimmed.startsWith('Line:')) {
+        if (
+            trimmed.length > 0 &&
+            !trimmed.startsWith('Script:') &&
+            !trimmed.startsWith('Library:') &&
+            !trimmed.startsWith('Line:')
+        ) {
             if (!this.currentEvent.metadata.raw) {
                 this.currentEvent.metadata.raw = trimmed;
             } else {
@@ -219,10 +240,11 @@ export class LogParser {
             scope: this.currentEvent.scope || 'UNKNOWN',
             severity: this.currentEvent.severity || 'OTHER',
             message: this.currentEvent.message || '',
-            metadata: Object.keys(this.currentEvent.metadata || {}).length > 0 
-                ? this.currentEvent.metadata as LogMetadata 
-                : undefined,
-            rawLines: [...this.buffer]
+            metadata:
+                Object.keys(this.currentEvent.metadata || {}).length > 0
+                    ? (this.currentEvent.metadata as LogMetadata)
+                    : undefined,
+            rawLines: [...this.buffer],
         };
 
         this.currentEvent = null;
@@ -292,9 +314,9 @@ export function parseGenericLogLine(line: string, fileName: string): LogEvent | 
         severity: 'OTHER',
         message: line,
         metadata: {
-            raw: `From: ${fileName}`
+            raw: `From: ${fileName}`,
         },
-        rawLines: [line]
+        rawLines: [line],
     };
 }
 
@@ -375,10 +397,10 @@ export class GenericLogParser {
     private parseGenericLine(line: string): Partial<LogEvent> {
         // Use filename (without .log) as identifier
         const identifier = this.fileName.replace(/\.log$/i, '');
-        
+
         // Try to extract identifier from format: "WCCOActrl2:["message"]"
         const identifierMatch = line.match(/^(\w+):\s*(.*)$/);
-        
+
         if (identifierMatch) {
             const [, lineIdentifier, message] = identifierMatch;
             return {
@@ -388,7 +410,7 @@ export class GenericLogParser {
                 severity: 'OTHER',
                 message: message.trim(),
                 metadata: {},
-                rawLines: []
+                rawLines: [],
             };
         }
 
@@ -400,7 +422,7 @@ export class GenericLogParser {
             severity: 'OTHER',
             message: line.trim(),
             metadata: {},
-            rawLines: []
+            rawLines: [],
         };
     }
 
@@ -417,34 +439,34 @@ export class GenericLogParser {
 
         // Combine all buffered lines into message
         const fullMessage = this.buffer.join('\n');
-        
+
         // Check if this is a complex data structure (dyn_anytype, dyn_string, etc.)
         // Pattern can be anywhere in first line: ["text"][dyn_string 4 items
         const firstLine = this.buffer[0];
         const dataTypeMatch = firstLine.match(/\[(dyn_[\w_]+)\s+(\d+)\s+items?/i);
-        
+
         let message = fullMessage;
         let metadata = this.currentEvent.metadata || {};
-        
+
         if (dataTypeMatch && this.buffer.length > 2) {
             // This is a complex data structure
             const [, dataType, itemCount] = dataTypeMatch;
             const lineCount = this.buffer.length;
-            
+
             // Check if there's a prefix before the data structure
             const prefixMatch = firstLine.match(/^(.*?)\[(dyn_[\w_]+)/);
             let prefix = '';
             if (prefixMatch && prefixMatch[1].trim()) {
                 prefix = prefixMatch[1].trim() + ' ';
             }
-            
+
             // Create a summary message
             message = `${prefix}${dataType} (${itemCount} items, ${lineCount} lines)`;
-            
+
             // Store the full formatted structure in metadata as raw
             metadata = {
                 ...metadata,
-                raw: fullMessage
+                raw: fullMessage,
             };
         }
 
@@ -455,7 +477,7 @@ export class GenericLogParser {
             severity: this.currentEvent.severity || 'OTHER',
             message: message,
             metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
-            rawLines: [...this.buffer]
+            rawLines: [...this.buffer],
         };
 
         this.currentEvent = null;

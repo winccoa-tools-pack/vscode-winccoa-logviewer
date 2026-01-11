@@ -5,9 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2026-01-11
+
+### Changed
+
+- **CI Compatibility**: Added `test:unit` script alias for standardized CI/CD pipeline
+- **CI Compatibility**: Dropped Node.js 18.x support (EOL, markdownlint incompatible)
+- **Code Quality**: Added ESLint, Prettier, and markdownlint for consistent code style
+- **Code Quality**: Fixed all linting errors (unused variables, `any` → `unknown`, regex escapes)
+
 ## [1.0.4] - 2026-01-04
 
 ### Changed
+
 - **Documentation**: Updated disclaimer to remove version reference
 - **Documentation**: Added Known Issues section with reload workaround
 - **Documentation**: Added performance notes for Windows and large projects
@@ -18,27 +28,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.3] - 2026-01-02
 
 ### Fixed
+
 - **Log File Filter**: Fixed bug where deselecting log files caused all logs to disappear instead of filtering correctly
-  - Root cause: Log events did not contain source file information, filter compared `identifier` (e.g., "PVSS_II") with filenames (e.g., "PVSS_II.log")
-  - Solution: Added `sourceFile` field to LogEvent, now properly filters logs by actual source file name
-  - Architecture change: Backend FileWatcher now respects `watchedFiles` set, only processes selected files
-  - Affected files: logEvent.ts, logFileWatcher.ts, logViewerPanel.ts, App.tsx
+    - Root cause: Log events did not contain source file information, filter compared `identifier` (e.g., "PVSS_II") with filenames (e.g., "PVSS_II.log")
+    - Solution: Added `sourceFile` field to LogEvent, now properly filters logs by actual source file name
+    - Architecture change: Backend FileWatcher now respects `watchedFiles` set, only processes selected files
+    - Affected files: logEvent.ts, logFileWatcher.ts, logViewerPanel.ts, App.tsx
 
 ### Known Issues
+
 - **File Re-Activation Floods History**: When deselecting and re-selecting a log file, all historical events are replayed
-  - Root cause: FileWatcher maintains file position even when file is unwatched
-  - Impact: Can cause duplicate entries in UI if file was previously watched
-  - Workaround: Clear logs after re-activation or avoid toggling files repeatedly
-  - Status: Will be fixed in future release (reset file position on re-watch)
+    - Root cause: FileWatcher maintains file position even when file is unwatched
+    - Impact: Can cause duplicate entries in UI if file was previously watched
+    - Workaround: Clear logs after re-activation or avoid toggling files repeatedly
+    - Status: Will be fixed in future release (reset file position on re-watch)
 
 ## [1.0.2] - 2026-01-01
 
 ### Changed
+
 - **Extension Dependency**: Updated from `RichardJanisch.winccoa-control` to `RichardJanisch.winccoa-project-admin` (renamed in v1.0.4)
 
 ## [1.0.1] - 2025-12-30
 
 ### Fixed
+
 - **Extension Dependency**: Updated from `RichardJanisch.winccoa-core` to `RichardJanisch.winccoa-control` (package name changed in Control extension v1.0.1)
 
 ## [1.0.0] - 2025-12-30
@@ -48,49 +62,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 This is the first stable release of WinCC OA LogViewer extension.
 
 ### Added
+
 - **Real-Time Log Monitoring**:
-  - Live file watching with automatic updates
-  - PVSS_II.log format parsing with metadata extraction (script, library, line, stacktrace)
-  - Support for multiple log files (PVSS_II.log, WCCOActrl*.log, custom logs)
-  - Pause/Resume functionality for log streaming
-  - Newest First toggle to show recent events first
+    - Live file watching with automatic updates
+    - PVSS_II.log format parsing with metadata extraction (script, library, line, stacktrace)
+    - Support for multiple log files (PVSS_II.log, WCCOActrl\*.log, custom logs)
+    - Pause/Resume functionality for log streaming
+    - Newest First toggle to show recent events first
 - **Advanced Filtering**:
-  - Severity level filtering (DEBUG, INFO, WARNING, SEVERE, FATAL, ERROR, OTHER)
-  - Text search across all log entries
-  - Column visibility management (right-click menu)
-  - Resizable columns via drag
-  - Expandable metadata view per log entry
+    - Severity level filtering (DEBUG, INFO, WARNING, SEVERE, FATAL, ERROR, OTHER)
+    - Text search across all log entries
+    - Column visibility management (right-click menu)
+    - Resizable columns via drag
+    - Expandable metadata view per log entry
 - **History Loading** (v0.2.5):
-  - Load historical PVSS_II*.log files via "History" button
-  - Date picker with 24-hour time dropdowns
-  - Time range filtering for large log files
-  - Batch loading with progress indicator
-  - All settings persisted across sessions
+    - Load historical PVSS_II\*.log files via "History" button
+    - Date picker with 24-hour time dropdowns
+    - Time range filtering for large log files
+    - Batch loading with progress indicator
+    - All settings persisted across sessions
 - **Integration**:
-  - WinCC OA Control extension support for automatic path detection
-  - Clickable file paths to open scripts in editor
-  - Three path detection modes: static, workspace, automatic
+    - WinCC OA Control extension support for automatic path detection
+    - Clickable file paths to open scripts in editor
+    - Three path detection modes: static, workspace, automatic
 
 ### Configuration
+
 - `winccoaLogviewer.logPathSource`: Choose path detection mode (static, workspace, automatic)
 - `winccoaLogviewer.staticLogPath`: Manual log directory path
 - `winccoaLogviewer.logLevel`: Configurable logging (ERROR, WARN, INFO, DEBUG, TRACE)
 
 ### Known Limitations
+
 - Performance degrades with 10,000+ events (no virtualized rendering yet)
 - File watcher menu bug: All entries disappear when clicking "Ignore"
 - Automatic path detection requires WinCC OA Control extension
 
 ### Dependencies
+
 - WinCC OA Control extension (RichardJanisch.winccoa-core) - optional, for automatic path detection
 
 ### Bug Fixes from Pre-Release
+
 - v0.2.2: Fixed log event ordering bug (parser buffer flush)
 - v0.2.3: Fixed UI theming issues in light mode
 - v0.2.4: Fixed settings persistence and checkbox double-toggle on Windows
 - v0.2.5: Added history loading with dark mode date picker support
 
 ### Breaking Changes from 0.x
+
 - Extension ID publisher changed to RichardJanisch
 - Icon updated to unified WinCC OA LogViewer design (512px)
 - Minimum VS Code version: 1.80.0
@@ -100,26 +120,30 @@ This is the first stable release of WinCC OA LogViewer extension.
 ## [0.2.5] - 2025-12-29
 
 ### Added
-- **Load History**: New "History" button to load historical PVSS_II*.log files
-  - File selection dropdown with file size info
-  - Date picker with 24-hour time dropdowns (European format)
-  - Auto-fills time range from file timestamps
-  - Batch loading with progress indicator
-  - All history settings persisted across sessions
+
+- **Load History**: New "History" button to load historical PVSS_II\*.log files
+    - File selection dropdown with file size info
+    - Date picker with 24-hour time dropdowns (European format)
+    - Auto-fills time range from file timestamps
+    - Batch loading with progress indicator
+    - All history settings persisted across sessions
 - Dark mode support for native date picker elements
 
 ## [0.2.4] - 2025-12-29
 
 ### Added
+
 - **Settings Persistence**: UI settings (newestFirst, autoExpandAll, selectedLogFiles, severityFilter, columnVisibility, columnWidths) are now persisted across sessions via workspaceState
 
 ### Fixed
+
 - Fixed checkbox double-toggle bug on Windows when selecting/deselecting log files
 - Fixed selected log files being reset when panel reopens (now properly restored from saved settings)
 
 ## [0.2.3] - 2025-12-26
 
 ### Fixed
+
 - Fixed UI theming issues in light mode
 - Filter buttons now use transparent background when inactive for better light mode visibility
 - Column header text now uses correct foreground color (black in light mode, white in dark mode)
@@ -128,6 +152,7 @@ This is the first stable release of WinCC OA LogViewer extension.
 ## [0.2.2] - 2025-12-26
 
 ### Fixed
+
 - **Critical**: Fixed log lines appearing in wrong order due to stateful parser buffering
 - Parser now correctly flushes the last event from its internal buffer after processing all lines
 - Fixed issue where the last log line in each file change was only emitted on the next change
@@ -137,6 +162,7 @@ This is the first stable release of WinCC OA LogViewer extension.
 ## [0.2.1] - 2025-12-25
 
 ### Fixed
+
 - Fixed race condition where log events during initialization were ignored
 - Fixed issue where first log entries after starting the watcher were not displayed
 - File watcher now properly processes newly created log files from the beginning
@@ -146,6 +172,7 @@ This is the first stable release of WinCC OA LogViewer extension.
 ## [0.2.0] - TBD
 
 ### Added
+
 - Automatic project detection mode via WinCC OA Core extension integration
 - Extension dependency on `winccoa-tools-pack.winccoa-core` (optional)
 - Automatic log directory path resolution from selected project
@@ -153,12 +180,14 @@ This is the first stable release of WinCC OA LogViewer extension.
 - Real-time project change detection with automatic log path updates
 
 ### Changed
+
 - Log directory path can now be automatically derived from selected project
 - Improved error handling when automatic mode is selected but Core extension is not installed
 
 ## [0.1.1] - 2025-12-14
 
 ### Added
+
 - Structured logging system with ExtensionOutputChannel
 - Configurable log levels: ERROR, WARN, INFO, DEBUG, TRACE
 - Visual log level icons (❌ ⚠️ ℹ️ 🔍 🔬) in output channel
@@ -176,6 +205,7 @@ This is the first stable release of WinCC OA LogViewer extension.
 - Comprehensive test case documentation for all log format variations
 
 ### Changed
+
 - Replaced simple logger with unified ExtensionOutputChannel (matching ctrllang extension)
 - Updated log level setting to use uppercase values for consistency
 - Improved PVSS parser regex to handle identifiers without spaces (e.g., "WCCILdataSQLite(0)")
@@ -184,6 +214,7 @@ This is the first stable release of WinCC OA LogViewer extension.
 - Renamed ERROR severity level to FATAL for consistency with WinCC OA terminology
 
 ### Fixed
+
 - PVSS logs no longer incorrectly merge multi-line events
 - Generic logs properly separate individual log entries with bracket depth tracking
 - Metadata display now correctly shows Script/Line information from comma-prefixed format
@@ -192,6 +223,7 @@ This is the first stable release of WinCC OA LogViewer extension.
 ## [0.1.0] - Initial Release
 
 ### Added
+
 - Real-time log file viewer for WinCC OA projects
 - WebView-based UI with React and Tailwind CSS
 - PVSS_II.log parser with multi-line event support
@@ -205,4 +237,3 @@ This is the first stable release of WinCC OA LogViewer extension.
 - Multiple workspace folder support
 - Color-coded log severity levels (INFO, WARNING, ERROR, SEVERE, DEBUG, OTHER)
 - Responsive webview interface
-

@@ -3,7 +3,7 @@
   "displayName": "WinCC OA LogViewer",
   "description": "LogViewer for WinCC OA - View and analyze log files in real-time",
   "publisher": "RichardJanisch",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "author": "RichardJanisch",
   "license": "MIT",
   "icon": "resources/wincc_oa_logviewer_512.png",
@@ -38,7 +38,13 @@
       "properties": {
         "winccoaLogviewer.logLevel": {
           "type": "string",
-          "enum": ["ERROR", "WARN", "INFO", "DEBUG", "TRACE"],
+          "enum": [
+            "ERROR",
+            "WARN",
+            "INFO",
+            "DEBUG",
+            "TRACE"
+          ],
           "default": "INFO",
           "description": "Logging level for extension output",
           "enumDescriptions": [
@@ -51,7 +57,11 @@
         },
         "winccoaLogviewer.logPathSource": {
           "type": "string",
-          "enum": ["static", "workspace", "automatic"],
+          "enum": [
+            "static",
+            "workspace",
+            "automatic"
+          ],
           "default": "automatic",
           "enumDescriptions": [
             "Use a static path configured in settings",
@@ -74,19 +84,34 @@
     "compile": "npm run build:webview && tsc -p ./",
     "build:webview": "cd webview && npm run build",
     "watch": "tsc --build --watch",
-    "lint": "echo \"Lint passed\"",
-    "test": "node ./dist/test/runTest.js",
+    "lint": "eslint \"src/**/*.ts\"",
+    "lint:fix": "eslint \"src/**/*.ts\" --fix",
+    "lint:md": "markdownlint \"**/*.md\" --ignore node_modules --ignore webview/node_modules",
+    "lint:md:fix": "markdownlint \"**/*.md\" --ignore node_modules --ignore webview/node_modules --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "format:md": "prettier --write \"**/*.md\"",
+    "format:md:check": "prettier --check \"**/*.md\"",
+    "style-check": "npm run lint && npm run format:check && npm run lint:md && npm run format:md:check",
+    "style-fix": "npm run lint:fix && npm run format && npm run lint:md:fix && npm run format:md",
+    "test": "npm run style-check && npm run compile && node ./dist/test/runTest.js",
+    "test:unit": "npm test",
     "package": "vsce package"
   },
   "devDependencies": {
-    "typescript": "^5.2.0",
-    "@types/vscode": "^1.80.0",
-    "@types/node": "^24.10.1",
     "@types/mocha": "^10.0.6",
-    "@vscode/vsce": "^3.7.1",
+    "@types/node": "^24.10.1",
+    "@types/vscode": "^1.80.0",
+    "@typescript-eslint/eslint-plugin": "^8.52.0",
+    "@typescript-eslint/parser": "^8.52.0",
     "@vscode/test-electron": "^2.3.9",
+    "@vscode/vsce": "^3.7.1",
+    "eslint": "^8.57.1",
+    "glob": "^13.0.0",
+    "markdownlint-cli": "^0.47.0",
     "mocha": "^11.7.5",
-    "glob": "^13.0.0"
+    "prettier": "^3.7.4",
+    "typescript": "^5.2.0"
   },
   "dependencies": {
     "@winccoa-tools-pack/npm-shared-library-core": "github:winccoa-tools-pack/npm-shared-library-core#main"
