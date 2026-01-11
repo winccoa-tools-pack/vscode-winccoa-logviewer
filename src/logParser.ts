@@ -94,7 +94,7 @@ export class LogParser {
             return null;
         }
 
-        const [, identifier, , timestamp, scope, severity, rest] = match;
+        const [, identifierName, instanceNumber, timestamp, scope, severity, rest] = match;
 
         // Split rest into message number and message
         // Format: "     5, this is a warning" or "     5/ctrl, message"
@@ -106,7 +106,7 @@ export class LogParser {
         const [, , message] = restMatch;
 
         return {
-            identifier: identifier.trim(),
+            identifier: `${identifierName.trim()}(${instanceNumber})`,
             timestamp: timestamp.trim(),
             scope: scope.trim(),
             severity: this.normalizeSeverity(severity.trim()),
