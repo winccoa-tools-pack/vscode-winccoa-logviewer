@@ -106,7 +106,7 @@
     "@typescript-eslint/parser": "^8.52.0",
     "@vscode/test-electron": "^2.3.9",
     "@vscode/vsce": "^3.7.1",
-    "eslint": "^8.57.1",
+    "eslint": "^9.39.2",
     "glob": "^13.0.0",
     "markdownlint-cli": "^0.47.0",
     "mocha": "^11.7.5",
