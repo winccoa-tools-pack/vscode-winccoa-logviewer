@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-01-15
+
+### Added
+- **🤖 GitHub Copilot Integration**: Language Model Tools for autonomous log analysis
+  - **logviewer_query_logs**: Query log events with filters (severity, time range, search pattern)
+  - **logviewer_get_recent_errors**: Get last N error/warning events
+  - **logviewer_search_pattern**: Search for specific patterns in logs
+  - **logviewer_get_by_severity**: Get all events by severity level
+  - Enables Copilot to analyze WinCC OA logs, find errors, and troubleshoot issues autonomously
+  - Uses VS Code's native Language Model Tools API (vscode.lm.registerTool)
+  - Clean service architecture with LanguageModelToolsService
+
+### Technical Details
+- In-memory log event storage (max 10,000 events)
+- Real-time event forwarding from LogFileWatcher to Language Model Tools Service
+- All tools return structured JSON with event details (timestamp, severity, message, metadata)
+- Registered at extension activation, no runtime overhead
+- Compatible with any AI assistant that supports VS Code Language Model Tools
+
 ## [1.0.5] - 2026-01-11
 
 ### Changed

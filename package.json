@@ -3,7 +3,7 @@
   "displayName": "WinCC OA LogViewer",
   "description": "LogViewer for WinCC OA - View and analyze log files in real-time",
   "publisher": "RichardJanisch",
-  "version": "1.0.5",
+  "version": "2.0.0",
   "author": "RichardJanisch",
   "license": "MIT",
   "icon": "resources/wincc_oa_logviewer_512.png",
@@ -31,6 +31,111 @@
         "command": "winccoa-logviewer.open",
         "title": "Open WinCC OA LogViewer",
         "category": "WinCC OA"
+      }
+    ],
+    "languageModelTools": [
+      {
+        "name": "logviewer_query_logs",
+        "displayName": "Query WinCC OA Logs",
+        "modelDescription": "Query log events with filters (severity, time range, search pattern). Returns recent log events matching the criteria. Use when the user asks about logs, errors, warnings, or specific events in WinCC OA.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_logs",
+        "icon": "$(search)",
+        "userDescription": "Query and filter WinCC OA log events",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "severity": {
+              "type": ["string", "array"],
+              "description": "Filter by severity: 'INFO', 'WARNING', 'FATAL', 'SEVERE', 'DEBUG', or array of severities",
+              "items": {
+                "type": "string",
+                "enum": ["INFO", "WARNING", "FATAL", "SEVERE", "DEBUG", "OTHER"]
+              }
+            },
+            "searchPattern": {
+              "type": "string",
+              "description": "Search pattern to match in message, scope, or identifier (case-insensitive)"
+            },
+            "lastMinutes": {
+              "type": "number",
+              "description": "Only show events from the last N minutes"
+            },
+            "limit": {
+              "type": "number",
+              "description": "Maximum number of results to return (default: 100)"
+            }
+          }
+        }
+      },
+      {
+        "name": "logviewer_get_recent_errors",
+        "displayName": "Get Recent WinCC OA Errors",
+        "modelDescription": "Get the last N error/warning events from WinCC OA logs. Use when the user asks about recent errors, problems, or issues in the system.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_errors",
+        "icon": "$(error)",
+        "userDescription": "Get recent errors and warnings from WinCC OA",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "number",
+              "description": "Number of recent errors to return (default: 10)"
+            }
+          }
+        }
+      },
+      {
+        "name": "logviewer_search_pattern",
+        "displayName": "Search WinCC OA Logs",
+        "modelDescription": "Search for a specific pattern in log messages. Use when the user wants to find specific text, error codes, or patterns in the logs.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_search",
+        "icon": "$(search-view-icon)",
+        "userDescription": "Search for specific patterns in WinCC OA logs",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "pattern": {
+              "type": "string",
+              "description": "Search pattern to find in logs"
+            },
+            "caseSensitive": {
+              "type": "boolean",
+              "description": "Whether search should be case-sensitive (default: false)"
+            },
+            "limit": {
+              "type": "number",
+              "description": "Maximum number of results (default: 50)"
+            }
+          },
+          "required": ["pattern"]
+        }
+      },
+      {
+        "name": "logviewer_get_by_severity",
+        "displayName": "Get WinCC OA Logs by Severity",
+        "modelDescription": "Get all events for a specific severity level (INFO, WARNING, FATAL, SEVERE, DEBUG). Use when the user asks about all warnings, all errors, or debug messages.",
+        "canBeReferencedInPrompt": true,
+        "toolReferenceName": "winccoa_severity",
+        "icon": "$(list-filter)",
+        "userDescription": "Filter WinCC OA logs by severity level",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "severity": {
+              "type": "string",
+              "enum": ["INFO", "WARNING", "FATAL", "SEVERE", "DEBUG", "OTHER"],
+              "description": "Severity level to filter by"
+            },
+            "limit": {
+              "type": "number",
+              "description": "Maximum number of results (default: 100)"
+            }
+          },
+          "required": ["severity"]
+        }
       }
     ],
     "configuration": {

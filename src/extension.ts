@@ -2,6 +2,10 @@ import * as vscode from 'vscode';
 import { LogViewerPanel } from './logViewerPanel';
 import { ExtensionOutputChannel } from './extensionOutput';
 import { PathResolver } from './pathResolver';
+import { LanguageModelToolsService } from './languageModelTools';
+
+// Global Language Model Tools Service instance
+let languageModelTools: LanguageModelToolsService;
 
 export function activate(context: vscode.ExtensionContext) {
     // Initialize Extension Output Channel
@@ -39,6 +43,12 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     ExtensionOutputChannel.info('Extension', 'WinCC OA LogViewer Extension activated');
+
+    // Initialize Language Model Tools Service (GitHub Copilot integration)
+    ExtensionOutputChannel.trace('Extension', 'Initializing Language Model Tools Service...');
+    languageModelTools = new LanguageModelToolsService();
+    languageModelTools.register(context);
+    ExtensionOutputChannel.info('Services', 'Language Model Tools Service initialized (4 tools registered)');
 
     // Setup Core extension integration if in automatic mode
     setupCoreExtensionIntegration();
@@ -99,6 +109,13 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(openLogViewerCommand);
 
     // Note: Logger disposal is handled by output channel subscription
+}
+
+/**
+ * Get the global Language Model Tools Service instance
+ */
+export function getLanguageModelTools(): LanguageModelToolsService | undefined {
+    return languageModelTools;
 }
 
 async function setupCoreExtensionIntegration() {

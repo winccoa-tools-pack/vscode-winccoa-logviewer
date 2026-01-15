@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { LogFileWatcher } from './logFileWatcher';
 import { LogEvent } from './logEvent';
 import { ExtensionOutputChannel } from './extensionOutput';
+import { getLanguageModelTools } from './extension';
 
 export class LogViewerPanel {
     public static currentPanel: LogViewerPanel | undefined;
@@ -313,6 +314,12 @@ export class LogViewerPanel {
                     command: 'newLogEvent',
                     event: event,
                 });
+
+                // Forward event to Language Model Tools Service
+                const lmTools = getLanguageModelTools();
+                if (lmTools) {
+                    lmTools.addLogEvent(event);
+                }
             });
 
             await this._watcher.start();
