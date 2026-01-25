@@ -3,7 +3,7 @@
   "displayName": "WinCC OA LogViewer",
   "description": "LogViewer for WinCC OA - View and analyze log files in real-time",
   "publisher": "RichardJanisch",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "author": "RichardJanisch",
   "license": "MIT",
   "icon": "resources/wincc_oa_logviewer_512.png",
@@ -22,7 +22,7 @@
     "RichardJanisch.winccoa-project-admin"
   ],
   "activationEvents": [
-    "onCommand:winccoa-logviewer.open"
+    "onStartupFinished"
   ],
   "main": "dist/extension.js",
   "contributes": {
@@ -179,6 +179,18 @@
           "type": "string",
           "default": "",
           "description": "Static log directory path (used when logPathSource is 'static'). Example: C:\\WinCC_OA\\MyProject\\log or /opt/WinCC_OA/MyProject/log"
+        },
+        "winccoaLogviewer.background.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable background log monitoring (logs are collected even when LogViewer panel is closed)"
+        },
+        "winccoaLogviewer.background.maxEvents": {
+          "type": "number",
+          "default": 500,
+          "minimum": 100,
+          "maximum": 5000,
+          "description": "Maximum number of log events to keep in background buffer (ringbuffer)"
         }
       }
     }

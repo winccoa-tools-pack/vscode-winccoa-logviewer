@@ -3,45 +3,26 @@
  * 
  * Provides WinCC OA log analysis tools for AI assistants.
  * Tools for querying, filtering, and analyzing log events.
+ * 
+ * v2.1.0: Uses LogBackgroundService for event access instead of own store.
  */
 
 import * as vscode from 'vscode';
 import { LogEvent, LogSeverity } from './logEvent';
-import { LogViewerPanel } from './logViewerPanel';
+import { LogBackgroundService } from './logBackgroundService';
 
 /**
  * Language Model Tools Service
  * 
  * Registers log analysis tools for GitHub Copilot autonomous access.
+ * Events are accessed from LogBackgroundService (shared with Panel).
  */
 export class LanguageModelToolsService {
     private disposables: vscode.Disposable[] = [];
-    private logEvents: LogEvent[] = [];
+    private backgroundService: LogBackgroundService;
 
-    /**
-     * Add a new log event to the in-memory store
-     */
-    addLogEvent(event: LogEvent): void {
-        this.logEvents.push(event);
-        
-        // Keep only last 10000 events to prevent memory issues
-        if (this.logEvents.length > 10000) {
-            this.logEvents = this.logEvents.slice(-10000);
-        }
-    }
-
-    /**
-     * Clear all stored log events
-     */
-    clearLogEvents(): void {
-        this.logEvents = [];
-    }
-
-    /**
-     * Get all stored log events
-     */
-    getLogEvents(): LogEvent[] {
-        return this.logEvents;
+    constructor(backgroundService: LogBackgroundService) {
+        this.backgroundService = backgroundService;
     }
 
     /**
@@ -52,22 +33,22 @@ export class LanguageModelToolsService {
         
         // Tool 1: Query Logs
         this.disposables.push(
-            vscode.lm.registerTool('logviewer_query_logs', new QueryLogsTool(() => this.logEvents))
+            vscode.lm.registerTool('logviewer_query_logs', new QueryLogsTool(this.backgroundService))
         );
 
         // Tool 2: Get Recent Errors
         this.disposables.push(
-            vscode.lm.registerTool('logviewer_get_recent_errors', new GetRecentErrorsTool(() => this.logEvents))
+            vscode.lm.registerTool('logviewer_get_recent_errors', new GetRecentErrorsTool(this.backgroundService))
         );
 
         // Tool 3: Search Pattern
         this.disposables.push(
-            vscode.lm.registerTool('logviewer_search_pattern', new SearchPatternTool(() => this.logEvents))
+            vscode.lm.registerTool('logviewer_search_pattern', new SearchPatternTool(this.backgroundService))
         );
 
         // Tool 4: Get by Severity
         this.disposables.push(
-            vscode.lm.registerTool('logviewer_get_by_severity', new GetBySeverityTool(() => this.logEvents))
+            vscode.lm.registerTool('logviewer_get_by_severity', new GetBySeverityTool(this.backgroundService))
         );
 
         // Add to context subscriptions
@@ -91,7 +72,7 @@ export class LanguageModelToolsService {
  * Query log events with filters (severity, time range, search pattern).
  */
 class QueryLogsTool implements vscode.LanguageModelTool<QueryLogsInput> {
-    constructor(private getLogEvents: () => LogEvent[]) {}
+    constructor(private backgroundService: LogBackgroundService) {}
 
     async invoke(
         options: vscode.LanguageModelToolInvocationOptions<QueryLogsInput>,
@@ -101,7 +82,7 @@ class QueryLogsTool implements vscode.LanguageModelTool<QueryLogsInput> {
             const input = options.input;
             console.log(`[QueryLogsTool] Querying logs with filters:`, input);
 
-            let events = this.getLogEvents();
+            let events = this.backgroundService.getEvents();
 
             // Filter by severity
             if (input.severity) {
@@ -179,6 +160,8 @@ interface QueryLogsInput {
  * Get the last N error/warning events.
  */
 class GetRecentErrorsTool implements vscode.LanguageModelTool<GetRecentErrorsInput> {
+    constructor(private backgroundService: LogBackgroundService) {}
+    
     async invoke(
         options: vscode.LanguageModelToolInvocationOptions<GetRecentErrorsInput>,
         _token: vscode.CancellationToken
@@ -188,14 +171,9 @@ class GetRecentErrorsTool implements vscode.LanguageModelTool<GetRecentErrorsInp
             const limit = input.limit || 10;
             console.log(`[GetRecentErrorsTool] Getting last ${limit} errors/warnings`);
 
-            const events = this.getLogEvents();
-            const errors = events.filter(e => 
-                e.severity === 'FATAL' || 
-                e.severity === 'SEVERE' || 
-                e.severity === 'WARNING'
-            );
+            const errors = this.backgroundService.getRecentErrors(limit);
 
-            const results = errors.slice(-limit).map(e => ({
+            const results = errors.map(e => ({
                 timestamp: e.timestamp,
                 severity: e.severity,
                 identifier: e.identifier,
@@ -227,8 +205,6 @@ class GetRecentErrorsTool implements vscode.LanguageModelTool<GetRecentErrorsInp
             ]);
         }
     }
-
-    constructor(private getLogEvents: () => LogEvent[]) {}
 }
 
 interface GetRecentErrorsInput {
@@ -241,7 +217,7 @@ interface GetRecentErrorsInput {
  * Search for a specific pattern in log messages.
  */
 class SearchPatternTool implements vscode.LanguageModelTool<SearchPatternInput> {
-    constructor(private getLogEvents: () => LogEvent[]) {}
+    constructor(private backgroundService: LogBackgroundService) {}
 
     async invoke(
         options: vscode.LanguageModelToolInvocationOptions<SearchPatternInput>,
@@ -251,17 +227,8 @@ class SearchPatternTool implements vscode.LanguageModelTool<SearchPatternInput> 
             const input = options.input;
             console.log(`[SearchPatternTool] Searching for pattern: ${input.pattern}`);
 
-            const events = this.getLogEvents();
-            const pattern = input.pattern.toLowerCase();
             const caseSensitive = input.caseSensitive || false;
-
-            const matches = events.filter(e => {
-                const searchText = `${e.message} ${e.scope} ${e.identifier}`;
-                if (caseSensitive) {
-                    return searchText.includes(input.pattern);
-                }
-                return searchText.toLowerCase().includes(pattern);
-            });
+            const matches = this.backgroundService.searchEvents(input.pattern, caseSensitive);
 
             const limit = input.limit || 50;
             const results = matches.slice(-limit).map(e => ({
@@ -311,7 +278,7 @@ interface SearchPatternInput {
  * Get all events for a specific severity level.
  */
 class GetBySeverityTool implements vscode.LanguageModelTool<GetBySeverityInput> {
-    constructor(private getLogEvents: () => LogEvent[]) {}
+    constructor(private backgroundService: LogBackgroundService) {}
 
     async invoke(
         options: vscode.LanguageModelToolInvocationOptions<GetBySeverityInput>,
@@ -321,7 +288,7 @@ class GetBySeverityTool implements vscode.LanguageModelTool<GetBySeverityInput> 
             const input = options.input;
             console.log(`[GetBySeverityTool] Getting events with severity: ${input.severity}`);
 
-            const events = this.getLogEvents();
+            const events = this.backgroundService.getEvents();
             const filtered = events.filter(e => e.severity === input.severity);
 
             const limit = input.limit || 100;
