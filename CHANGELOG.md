@@ -22,6 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Configuration Settings**:
   - `winccoaLogviewer.background.enabled`: Enable/disable background monitoring (default: true)
   - `winccoaLogviewer.background.maxEvents`: Ringbuffer size (default: 500)
+- **Enhanced Logging**: Comprehensive status reporting in Extension Output
+  - Extension start: Version, background logging status, ringbuffer size
+  - Project selection: Active project, log folder path, validation status
+  - File selection changes: Detailed watch list with added/removed/unchanged files
+  - Ringbuffer monitoring: Status every 50 events (X/500 events, Y% filled)
+  - Auto-activation: Extension starts on VS Code launch (`onStartupFinished`)
 
 ### Changed
 
@@ -34,12 +40,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Direct access to background ringbuffer (500 events by default)
   - Better memory efficiency
 
+### Fixed
+
+- **Race Condition**: File-level locking prevents parser state corruption
+  - Multiple file change events can fire simultaneously
+  - Locking ensures sequential processing per file
+  - Parser state is now protected from concurrent access
+  - Fixes intermittent missing events (21 vs 22 in tests)
+
 ### Technical Details
 
 - Singleton pattern for LogBackgroundService
+- File-level locking with `Map<filePath, Promise<void>>` for race condition prevention
 - Automatic retry with exponential backoff on watcher errors
 - Graceful degradation: Extension works even if background service fails
-- Proper logging throughout lifecycle (activation, restart, disposal)
+- Detailed logging throughout lifecycle (activation, restart, disposal, file selection)
 - Background service disposes cleanly on extension deactivation
 
 ## [2.0.0] - 2026-01-15

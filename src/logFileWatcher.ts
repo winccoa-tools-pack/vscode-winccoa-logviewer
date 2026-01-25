@@ -10,6 +10,7 @@ export class LogFileWatcher {
     private parsers = new Map<string, LogParser | GenericLogParser>(); // Separate parser per file
     private filePositions = new Map<string, number>(); // Track read position for each file
     private lineBuffers = new Map<string, string>(); // Buffer for incomplete lines per file
+    private fileLocks = new Map<string, Promise<void>>(); // File-level locks to prevent race conditions
     private onNewEventCallback: ((event: LogEvent) => void) | undefined;
     private isPaused = false;
     private isInitialized = false; // Track if initialization is complete
@@ -50,10 +51,68 @@ export class LogFileWatcher {
      * @param fileNames Array of log file names to watch (e.g., ['PVSS_II.log', 'WCCOActrl_1.log'])
      */
     public setWatchedFiles(fileNames: string[]): void {
+        const previousWatched = Array.from(this.watchedFiles);
+        const newWatched = fileNames;
+        
+        // Calculate changes
+        const added = newWatched.filter(f => !previousWatched.includes(f));
+        const removed = previousWatched.filter(f => !newWatched.includes(f));
+        const unchanged = newWatched.filter(f => previousWatched.includes(f));
+        
         this.watchedFiles = new Set(fileNames);
+        
         ExtensionOutputChannel.info(
             'LogFileWatcher',
-            `Now watching ${fileNames.length} file(s): ${fileNames.join(', ')}`,
+            '═══════════════════════════════════════════════════════',
+        );
+        ExtensionOutputChannel.info(
+            'LogFileWatcher',
+            `📊 File Selection Updated:`,
+        );
+        ExtensionOutputChannel.info(
+            'LogFileWatcher',
+            `   ✅ Watching: ${newWatched.length} file(s)`,
+        );
+        
+        if (added.length > 0) {
+            ExtensionOutputChannel.info(
+                'LogFileWatcher',
+                `   ➕ Added: ${added.join(', ')}`,
+            );
+        }
+        
+        if (removed.length > 0) {
+            ExtensionOutputChannel.info(
+                'LogFileWatcher',
+                `   ➖ Removed: ${removed.join(', ')}`,
+            );
+        }
+        
+        if (unchanged.length > 0) {
+            ExtensionOutputChannel.debug(
+                'LogFileWatcher',
+                `   🔄 Unchanged: ${unchanged.join(', ')}`,
+            );
+        }
+        
+        // List all available files with their status
+        const allFiles = this.getAvailableLogFiles();
+        ExtensionOutputChannel.info(
+            'LogFileWatcher',
+            `   📄 Available files: ${allFiles.length}`,
+        );
+        
+        for (const file of allFiles) {
+            const isWatched = this.watchedFiles.has(file);
+            ExtensionOutputChannel.info(
+                'LogFileWatcher',
+                `      ${isWatched ? '👁️  WATCHING' : '⏸️  IGNORED '} - ${file}`,
+            );
+        }
+        
+        ExtensionOutputChannel.info(
+            'LogFileWatcher',
+            '═══════════════════════════════════════════════════════',
         );
     }
 
@@ -154,6 +213,7 @@ export class LogFileWatcher {
 
     /**
      * Handle file change event - read new content only
+     * Uses file-level locking to prevent race conditions when multiple change events fire
      */
     private async handleFileChange(filePath: string): Promise<void> {
         // Ignore events until initialization is complete
@@ -175,11 +235,46 @@ export class LogFileWatcher {
             return;
         }
 
-        try {
-            // Resolve an absolute path and canonical key for maps (lowercase on Windows)
-            const resolvedPath = path.resolve(filePath);
-            const key = resolvedPath.toLowerCase();
+        // Resolve an absolute path and canonical key for maps (lowercase on Windows)
+        const resolvedPath = path.resolve(filePath);
+        const key = resolvedPath.toLowerCase();
 
+        // Wait for any pending operation on this file (CRITICAL: Prevents race conditions)
+        const pendingLock = this.fileLocks.get(key);
+        if (pendingLock) {
+            ExtensionOutputChannel.trace(
+                'LogFileWatcher',
+                `Waiting for pending operation on ${fileName}...`,
+            );
+            await pendingLock;
+            ExtensionOutputChannel.trace(
+                'LogFileWatcher',
+                `Previous operation completed for ${fileName}, proceeding`,
+            );
+        }
+
+        // Create new lock for this operation
+        const lock = this._handleFileChangeInternal(key, resolvedPath, fileName);
+        this.fileLocks.set(key, lock);
+
+        try {
+            await lock;
+        } finally {
+            // Remove lock when operation completes
+            this.fileLocks.delete(key);
+        }
+    }
+
+    /**
+     * Internal file change handler (actual implementation)
+     * Called within lock to ensure sequential processing per file
+     */
+    private async _handleFileChangeInternal(
+        key: string,
+        resolvedPath: string,
+        fileName: string,
+    ): Promise<void> {
+        try {
             const stats = fs.statSync(resolvedPath);
             const currentSize = stats.size;
 
@@ -364,7 +459,7 @@ export class LogFileWatcher {
         } catch (error) {
             ExtensionOutputChannel.error(
                 'LogFileWatcher',
-                `Error handling file change: ${path.basename(filePath)}`,
+                `Error handling file change: ${fileName}`,
                 error as Error,
             );
         }

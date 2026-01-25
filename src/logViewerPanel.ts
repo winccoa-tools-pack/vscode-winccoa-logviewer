@@ -269,6 +269,11 @@ export class LogViewerPanel {
      * Set which files the watcher should monitor
      */
     private _setWatchedFiles(files: string[]): void {
+        ExtensionOutputChannel.info(
+            'LogViewerPanel',
+            `Received file selection from UI: ${files.length} file(s) - ${files.join(', ')}`,
+        );
+        
         const backgroundService = getBackgroundService();
         const watcher = backgroundService.getWatcher();
         
@@ -276,6 +281,7 @@ export class LogViewerPanel {
             ExtensionOutputChannel.warn('LogViewerPanel', 'Cannot set watched files: no watcher in background service');
             return;
         }
+        
         watcher.setWatchedFiles(files);
     }
 
