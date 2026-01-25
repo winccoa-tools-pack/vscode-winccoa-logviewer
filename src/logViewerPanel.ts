@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import { LogFileWatcher } from './logFileWatcher';
 import { LogEvent } from './logEvent';
 import { ExtensionOutputChannel } from './extensionOutput';
-import { getLanguageModelTools } from './extension';
+import { getBackgroundService } from './extension';
+import { LogBackgroundService } from './logBackgroundService';
 
 export class LogViewerPanel {
     public static currentPanel: LogViewerPanel | undefined;
@@ -11,7 +12,7 @@ export class LogViewerPanel {
     private readonly _panel: vscode.WebviewPanel;
     private readonly _extensionUri: vscode.Uri;
     private _disposables: vscode.Disposable[] = [];
-    private _watcher: LogFileWatcher | undefined;
+    private _eventSubscription: vscode.Disposable | undefined;
     private _currentLogPath: string | undefined;
 
     // State key for workspaceState
@@ -189,12 +190,15 @@ export class LogViewerPanel {
      * Send available history files to webview
      */
     private _sendHistoryFiles(): void {
-        if (!this._watcher) {
-            ExtensionOutputChannel.warn('LogViewerPanel', 'Cannot get history files: no watcher');
+        const backgroundService = getBackgroundService();
+        const watcher = backgroundService.getWatcher();
+        
+        if (!watcher) {
+            ExtensionOutputChannel.warn('LogViewerPanel', 'Cannot get history files: no watcher in background service');
             return;
         }
 
-        const files = this._watcher.getHistoryFiles();
+        const files = watcher.getHistoryFiles();
         this._panel.webview.postMessage({
             command: 'historyFiles',
             files: files.map((f) => ({
@@ -215,8 +219,11 @@ export class LogViewerPanel {
         fromTime?: string,
         toTime?: string,
     ): Promise<void> {
-        if (!this._watcher) {
-            ExtensionOutputChannel.warn('LogViewerPanel', 'Cannot load history: no watcher');
+        const backgroundService = getBackgroundService();
+        const watcher = backgroundService.getWatcher();
+        
+        if (!watcher) {
+            ExtensionOutputChannel.warn('LogViewerPanel', 'Cannot load history: no watcher in background service');
             return;
         }
 
@@ -227,7 +234,7 @@ export class LogViewerPanel {
         });
 
         try {
-            const events = await this._watcher.loadHistoryFile(fileName, fromTime, toTime);
+            const events = await watcher.loadHistoryFile(fileName, fromTime, toTime);
 
             // Send events in batches to avoid overwhelming the webview
             const batchSize = 100;
@@ -262,32 +269,41 @@ export class LogViewerPanel {
      * Set which files the watcher should monitor
      */
     private _setWatchedFiles(files: string[]): void {
-        if (!this._watcher) {
-            ExtensionOutputChannel.warn('LogViewerPanel', 'Cannot set watched files: no watcher');
+        const backgroundService = getBackgroundService();
+        const watcher = backgroundService.getWatcher();
+        
+        if (!watcher) {
+            ExtensionOutputChannel.warn('LogViewerPanel', 'Cannot set watched files: no watcher in background service');
             return;
         }
-        this._watcher.setWatchedFiles(files);
+        watcher.setWatchedFiles(files);
     }
 
     /**
      * Set paused state of the watcher
      */
     public setPaused(paused: boolean): void {
+        const backgroundService = getBackgroundService();
+        const watcher = backgroundService.getWatcher();
+        
         ExtensionOutputChannel.debug(
             'LogViewerPanel',
-            `setPaused: ${paused}, hasWatcher: ${!!this._watcher}`,
+            `setPaused: ${paused}, hasWatcher: ${!!watcher}`,
         );
-        if (this._watcher) {
+        if (watcher) {
             if (paused) {
-                this._watcher.pause();
+                watcher.pause();
             } else {
-                this._watcher.resume();
+                watcher.resume();
             }
         }
     }
 
     /**
      * Start watching log directory
+     * 
+     * v2.1.0: Panel is now a consumer of BackgroundService.
+     * Subscribes to new events instead of owning the watcher.
      */
     public async startWatching(logPath: string): Promise<void> {
         ExtensionOutputChannel.info(
@@ -296,52 +312,66 @@ export class LogViewerPanel {
         );
 
         // Check if already watching this path
-        if (this._currentLogPath === logPath && this._watcher) {
+        if (this._currentLogPath === logPath && this._eventSubscription) {
             ExtensionOutputChannel.debug('LogViewerPanel', `Already watching path: ${logPath}`);
             return;
         }
 
-        // Stop existing watcher if any
-        if (this._watcher) {
-            ExtensionOutputChannel.debug('LogViewerPanel', 'Stopping existing watcher');
-            this._watcher.stop();
+        // Unsubscribe from old subscription
+        if (this._eventSubscription) {
+            ExtensionOutputChannel.debug('LogViewerPanel', 'Disposing old event subscription');
+            this._eventSubscription.dispose();
+            this._eventSubscription = undefined;
         }
 
         try {
-            this._watcher = new LogFileWatcher(logPath, (event: LogEvent) => {
+            const backgroundService = getBackgroundService();
+            
+            // Subscribe to background service events
+            this._eventSubscription = backgroundService.onNewEvent((event: LogEvent) => {
                 // Send event to webview
                 this._panel.webview.postMessage({
                     command: 'newLogEvent',
                     event: event,
                 });
-
-                // Forward event to Language Model Tools Service
-                const lmTools = getLanguageModelTools();
-                if (lmTools) {
-                    lmTools.addLogEvent(event);
-                }
             });
-
-            await this._watcher.start();
 
             this._currentLogPath = logPath;
 
-            // Send available log files to webview
-            const availableFiles = this._watcher.getAvailableLogFiles();
+            // Send initial buffered events from background service
+            const existingEvents = backgroundService.getEvents();
             ExtensionOutputChannel.debug(
                 'LogViewerPanel',
-                `Sending ${availableFiles.length} log files to webview`,
+                `Sending ${existingEvents.length} buffered events from background service`,
             );
             this._panel.webview.postMessage({
-                command: 'availableLogFiles',
-                files: availableFiles,
+                command: 'initialEvents',
+                events: existingEvents,
             });
+
+            // Send available log files to webview
+            const watcher = backgroundService.getWatcher();
+            if (watcher) {
+                const availableFiles = watcher.getAvailableLogFiles();
+                ExtensionOutputChannel.debug(
+                    'LogViewerPanel',
+                    `Sending ${availableFiles.length} available log files to webview`,
+                );
+                this._panel.webview.postMessage({
+                    command: 'availableLogFiles',
+                    files: availableFiles,
+                });
+            } else {
+                ExtensionOutputChannel.warn(
+                    'LogViewerPanel',
+                    'No watcher available - cannot send log files to webview',
+                );
+            }
 
             ExtensionOutputChannel.success(
                 'LogViewerPanel',
-                `Successfully started watching logs: ${logPath}`,
+                `Successfully subscribed to background service logs: ${logPath}`,
             );
-            vscode.window.showInformationMessage(`Watching logs in: ${logPath}`);
         } catch (error) {
             this._currentLogPath = undefined;
             ExtensionOutputChannel.error(
@@ -436,11 +466,11 @@ export class LogViewerPanel {
         ExtensionOutputChannel.info('LogViewerPanel', 'Disposing LogViewerPanel');
         LogViewerPanel.currentPanel = undefined;
 
-        // Stop watcher
-        if (this._watcher) {
-            ExtensionOutputChannel.debug('LogViewerPanel', 'Disposing watcher');
-            this._watcher.dispose();
-            this._watcher = undefined;
+        // Unsubscribe from background service events
+        if (this._eventSubscription) {
+            ExtensionOutputChannel.debug('LogViewerPanel', 'Disposing event subscription');
+            this._eventSubscription.dispose();
+            this._eventSubscription = undefined;
         }
 
         this._panel.dispose();

@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-01-25
+
+### Added
+
+- **🚀 Background Log Monitoring**: File watcher now runs permanently in background (independent of LogViewer Panel)
+  - Logs are collected even when LogViewer panel is closed
+  - MCP/Copilot Tools have access to latest logs at all times
+  - Ringbuffer with configurable limit (default: 500 events, range: 100-5000)
+  - Automatic cleanup to prevent memory issues
+  - Event batching (100ms) for performance optimization
+- **LogBackgroundService**: New singleton service for background log collection
+  - Consumer Pattern: Panel and MCP Tools subscribe to service events
+  - Automatic restart on project/log path changes
+  - Smart memory management with ringbuffer
+- **Configuration Settings**:
+  - `winccoaLogviewer.background.enabled`: Enable/disable background monitoring (default: true)
+  - `winccoaLogviewer.background.maxEvents`: Ringbuffer size (default: 500)
+
+### Changed
+
+- **Panel Architecture**: LogViewerPanel is now a consumer instead of watcher owner
+  - Subscribes to BackgroundService events
+  - Receives initial buffered events on open
+  - No longer manages LogFileWatcher lifecycle
+- **Language Model Tools**: Now use BackgroundService instead of own event store
+  - Removed duplicate in-memory storage (was 10,000 events)
+  - Direct access to background ringbuffer (500 events by default)
+  - Better memory efficiency
+
+### Technical Details
+
+- Singleton pattern for LogBackgroundService
+- Automatic retry with exponential backoff on watcher errors
+- Graceful degradation: Extension works even if background service fails
+- Proper logging throughout lifecycle (activation, restart, disposal)
+- Background service disposes cleanly on extension deactivation
+
 ## [2.0.0] - 2026-01-15
 
 ### Added

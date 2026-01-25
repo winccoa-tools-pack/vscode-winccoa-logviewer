@@ -3,9 +3,11 @@ import { LogViewerPanel } from './logViewerPanel';
 import { ExtensionOutputChannel } from './extensionOutput';
 import { PathResolver } from './pathResolver';
 import { LanguageModelToolsService } from './languageModelTools';
+import { LogBackgroundService } from './logBackgroundService';
 
-// Global Language Model Tools Service instance
+// Global instances
 let languageModelTools: LanguageModelToolsService;
+let backgroundService: LogBackgroundService;
 
 export function activate(context: vscode.ExtensionContext) {
     // Initialize Extension Output Channel
@@ -25,10 +27,27 @@ export function activate(context: vscode.ExtensionContext) {
     ExtensionOutputChannel.debug('Extension', `Extension Path: ${context.extensionPath}`);
     ExtensionOutputChannel.debug('Extension', `VS Code Version: ${vscode.version}`);
 
+    // Log version
+    ExtensionOutputChannel.info(
+        'Extension',
+        `📦 Version ${vscode.extensions.getExtension('RichardJanisch.winccoa-vscode-logviewer')?.packageJSON.version || 'unknown'}`,
+    );
+
     // Log configuration status
     const config = vscode.workspace.getConfiguration('winccoaLogviewer');
+    const backgroundEnabled = config.get<boolean>('background.enabled', true);
+    const maxEvents = config.get<number>('background.maxEvents', 500);
     const logPathSource = config.get<string>('logPathSource', 'workspace');
     const logLevel = config.get<string>('logLevel', 'INFO');
+    
+    ExtensionOutputChannel.info(
+        'Extension',
+        `⚙️ Background logging: ${backgroundEnabled ? '✅ enabled' : '❌ disabled'}`,
+    );
+    ExtensionOutputChannel.info(
+        'Extension',
+        `🔄 Ringbuffer size: ${maxEvents} events`,
+    );
     ExtensionOutputChannel.debug('Configuration', `Log Path Source: ${logPathSource}`);
     ExtensionOutputChannel.debug('Configuration', `Log Level: ${logLevel}`);
 
@@ -42,11 +61,29 @@ export function activate(context: vscode.ExtensionContext) {
         ExtensionOutputChannel.warn('Extension', 'No workspace folder open');
     }
 
-    ExtensionOutputChannel.info('Extension', 'WinCC OA LogViewer Extension activated');
+    ExtensionOutputChannel.info('Extension', '🚀 WinCC OA LogViewer Extension activated');
+
+    // Initialize Background Service (Singleton)
+    ExtensionOutputChannel.trace('Extension', 'Initializing Background Service...');
+    backgroundService = LogBackgroundService.getInstance();
+    
+    // Auto-start background watcher if log path available
+    const initialLogPath = PathResolver.getLogPath();
+    if (initialLogPath) {
+        ExtensionOutputChannel.debug('Extension', `Auto-starting background service with: ${initialLogPath}`);
+        backgroundService.start(initialLogPath).then(() => {
+            ExtensionOutputChannel.info('Services', '✅ Background log watcher started');
+        }).catch((error) => {
+            ExtensionOutputChannel.error('Services', 'Failed to start background watcher', error as Error);
+        });
+    } else {
+        ExtensionOutputChannel.debug('Extension', 'No log path available - background service will start when path is set');
+    }
 
     // Initialize Language Model Tools Service (GitHub Copilot integration)
+    // Pass background service to tools for event access
     ExtensionOutputChannel.trace('Extension', 'Initializing Language Model Tools Service...');
-    languageModelTools = new LanguageModelToolsService();
+    languageModelTools = new LanguageModelToolsService(backgroundService);
     languageModelTools.register(context);
     ExtensionOutputChannel.info('Services', 'Language Model Tools Service initialized (4 tools registered)');
 
@@ -60,6 +97,15 @@ export function activate(context: vscode.ExtensionContext) {
                 ExtensionOutputChannel.updateLogLevel();
             }
 
+            // Handle background service configuration changes
+            if (
+                e.affectsConfiguration('winccoaLogviewer.background.enabled') ||
+                e.affectsConfiguration('winccoaLogviewer.background.maxEvents')
+            ) {
+                ExtensionOutputChannel.info('Configuration', 'Background service configuration changed');
+                backgroundService.updateConfiguration();
+            }
+
             // Handle log path configuration changes
             if (
                 e.affectsConfiguration('winccoaLogviewer.logPathSource') ||
@@ -70,9 +116,20 @@ export function activate(context: vscode.ExtensionContext) {
                 // Re-setup Core integration when mode changes
                 setupCoreExtensionIntegration();
 
+                // Restart background service with new path
+                const newPath = PathResolver.getLogPath();
+                if (newPath) {
+                    ExtensionOutputChannel.debug(
+                        'Configuration',
+                        `Restarting background service with new log path: ${newPath}`,
+                    );
+                    backgroundService.restart(newPath).catch((error) => {
+                        ExtensionOutputChannel.error('Configuration', 'Failed to restart background service', error as Error);
+                    });
+                }
+
                 // If panel is open, update it with new path
                 if (LogViewerPanel.currentPanel) {
-                    const newPath = PathResolver.getLogPath();
                     if (newPath) {
                         ExtensionOutputChannel.debug(
                             'Configuration',
@@ -112,6 +169,13 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 /**
+ * Get the global Background Service instance
+ */
+export function getBackgroundService(): LogBackgroundService {
+    return backgroundService;
+}
+
+/**
  * Get the global Language Model Tools Service instance
  */
 export function getLanguageModelTools(): LanguageModelToolsService | undefined {
@@ -137,6 +201,14 @@ async function setupCoreExtensionIntegration() {
             'CoreIntegration',
             'WinCC OA Core extension not found - automatic mode unavailable',
         );
+        ExtensionOutputChannel.info(
+            'CoreIntegration',
+            '⚠️ No active WinCC OA project detected at startup',
+        );
+        ExtensionOutputChannel.info(
+            'CoreIntegration',
+            '💡 Select a project in WinCC OA Project Admin to start log monitoring',
+        );
         return;
     }
 
@@ -146,6 +218,16 @@ async function setupCoreExtensionIntegration() {
     }
 
     const coreApi = coreExtension.exports;
+
+    // Log initial project state
+    ExtensionOutputChannel.info(
+        'CoreIntegration',
+        '═══════════════════════════════════════════════════════',
+    );
+    ExtensionOutputChannel.info(
+        'CoreIntegration',
+        '🔍 Checking for active WinCC OA project...',
+    );
 
     // Subscribe to project changes
     coreApi.onDidChangeProject((project: unknown) => {
@@ -158,15 +240,46 @@ async function setupCoreExtensionIntegration() {
             const proj = project as { projectDir: string; name: string };
             const projectDir = proj.projectDir.replace(/[/]+$/, ''); // Remove trailing slashes
             const logPath = `${projectDir}/log`;
+            
             ExtensionOutputChannel.info(
                 'CoreIntegration',
-                `Project changed: ${proj.name} → Log path: ${logPath}`,
+                '═══════════════════════════════════════════════════════',
+            );
+            ExtensionOutputChannel.info(
+                'CoreIntegration',
+                `🔄 WinCC OA Project Changed: ${proj.name}`,
+            );
+            ExtensionOutputChannel.info(
+                'CoreIntegration',
+                `📂 Project directory: ${projectDir}`,
+            );
+            ExtensionOutputChannel.info(
+                'CoreIntegration',
+                `📁 Log folder: ${logPath}`,
             );
 
             // Validate path before updating panel
             if (!PathResolver.validatePath(logPath)) {
-                ExtensionOutputChannel.error('CoreIntegration', `Invalid log path: ${logPath}`);
+                ExtensionOutputChannel.error('CoreIntegration', `❌ Log folder not found: ${logPath}`);
+                ExtensionOutputChannel.warn('CoreIntegration', '⚠️ Background log monitoring will not work until log folder exists');
+                ExtensionOutputChannel.info(
+                    'CoreIntegration',
+                    '═══════════════════════════════════════════════════════',
+                );
                 return;
+            }
+            
+            ExtensionOutputChannel.info('CoreIntegration', `✅ Log folder exists and is accessible`);
+
+            // Only restart if path actually changed (prevent restart on first event)
+            const currentConfig = backgroundService.getConfiguration();
+            if (currentConfig.currentPath !== logPath) {
+                ExtensionOutputChannel.debug('CoreIntegration', `Restarting background service for new project (${currentConfig.currentPath} → ${logPath})`);
+                backgroundService.restart(logPath).catch((error) => {
+                    ExtensionOutputChannel.error('CoreIntegration', 'Failed to restart background service', error as Error);
+                });
+            } else {
+                ExtensionOutputChannel.debug('CoreIntegration', `Path unchanged (${logPath}) - no restart needed`);
             }
 
             // If panel is open, update it with new log path
@@ -188,20 +301,43 @@ async function setupCoreExtensionIntegration() {
         const logPath = `${projectDir}/log`;
         ExtensionOutputChannel.info(
             'CoreIntegration',
-            `Current project: ${currentProject.name} → Log path: ${logPath}`,
+            `🎯 Active WinCC OA Project: ${currentProject.name}`,
+        );
+        ExtensionOutputChannel.info(
+            'CoreIntegration',
+            `📂 Project directory: ${projectDir}`,
+        );
+        ExtensionOutputChannel.info(
+            'CoreIntegration',
+            `📁 Expected log folder: ${logPath}`,
         );
 
         if (!PathResolver.validatePath(logPath)) {
+            ExtensionOutputChannel.error(
+                'CoreIntegration',
+                `❌ Log directory does not exist: ${logPath}`,
+            );
             ExtensionOutputChannel.warn(
                 'CoreIntegration',
-                `Log directory does not exist: ${logPath}`,
+                `⚠️ Please check if WinCC OA project is properly configured`,
+            );
+        } else {
+            ExtensionOutputChannel.info(
+                'CoreIntegration',
+                `✅ Log folder exists and is accessible`,
             );
         }
     } else {
-        ExtensionOutputChannel.debug('CoreIntegration', 'No project currently selected');
+        ExtensionOutputChannel.warn('CoreIntegration', '⚠️ No WinCC OA project currently selected');
+        ExtensionOutputChannel.info('CoreIntegration', 'Please select a project in WinCC OA Project Admin to enable log monitoring');
     }
 }
 
 export function deactivate() {
     ExtensionOutputChannel.info('Extension', 'WinCC OA LogViewer Extension deactivated');
+    
+    // Dispose background service
+    if (backgroundService) {
+        backgroundService.dispose();
+    }
 }
