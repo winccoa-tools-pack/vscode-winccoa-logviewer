@@ -3,7 +3,7 @@
   "displayName": "WinCC OA LogViewer",
   "description": "LogViewer for WinCC OA - View and analyze log files in real-time",
   "publisher": "RichardJanisch",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "author": "RichardJanisch",
   "license": "MIT",
   "icon": "resources/wincc_oa_logviewer_512.png",
@@ -46,11 +46,21 @@
           "type": "object",
           "properties": {
             "severity": {
-              "type": ["string", "array"],
+              "type": [
+                "string",
+                "array"
+              ],
               "description": "Filter by severity: 'INFO', 'WARNING', 'FATAL', 'SEVERE', 'DEBUG', or array of severities",
               "items": {
                 "type": "string",
-                "enum": ["INFO", "WARNING", "FATAL", "SEVERE", "DEBUG", "OTHER"]
+                "enum": [
+                  "INFO",
+                  "WARNING",
+                  "FATAL",
+                  "SEVERE",
+                  "DEBUG",
+                  "OTHER"
+                ]
               }
             },
             "searchPattern": {
@@ -110,7 +120,9 @@
               "description": "Maximum number of results (default: 50)"
             }
           },
-          "required": ["pattern"]
+          "required": [
+            "pattern"
+          ]
         }
       },
       {
@@ -126,7 +138,14 @@
           "properties": {
             "severity": {
               "type": "string",
-              "enum": ["INFO", "WARNING", "FATAL", "SEVERE", "DEBUG", "OTHER"],
+              "enum": [
+                "INFO",
+                "WARNING",
+                "FATAL",
+                "SEVERE",
+                "DEBUG",
+                "OTHER"
+              ],
               "description": "Severity level to filter by"
             },
             "limit": {
@@ -134,7 +153,9 @@
               "description": "Maximum number of results (default: 100)"
             }
           },
-          "required": ["severity"]
+          "required": [
+            "severity"
+          ]
         }
       }
     ],
@@ -226,7 +247,7 @@
     "eslint": "^8.57.1",
     "glob": "^13.0.0",
     "markdownlint-cli": "^0.47.0",
-    "mocha": "^11.7.5",
+    "mocha": "^11.3.0",
     "prettier": "^3.7.4",
     "typescript": "^5.2.0"
   },

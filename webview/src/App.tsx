@@ -69,12 +69,15 @@ interface PersistedState {
   historyStartTime?: string;
   historyEndDate?: string;
   historyEndTime?: string;
+  // View mode
+  plainTextMode?: boolean;
 }
 
 // Default values for persisted state
 const defaultPersistedState: PersistedState = {
   newestFirst: true,
   autoExpandAll: false,
+  plainTextMode: true,
   selectedLogFiles: [],
   severityFilter: ['DEBUG', 'INFO', 'WARNING', 'FATAL', 'SEVERE', 'OTHER'],
   columnVisibility: {
@@ -127,6 +130,7 @@ function App() {
   const [logFileSearch, setLogFileSearch] = useState('');
   const [newestFirst, setNewestFirst] = useState(initialState.newestFirst);
   const [autoExpandAll, setAutoExpandAll] = useState(initialState.autoExpandAll);
+  const [plainTextMode, setPlainTextMode] = useState<boolean>(initialState.plainTextMode ?? false);
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set()); // Track expanded logs by unique key
   const logListRef = useRef<HTMLDivElement>(null); // Ref for auto-scroll
 
@@ -377,6 +381,7 @@ function App() {
           if (settings) {
             if (settings.newestFirst !== undefined) setNewestFirst(settings.newestFirst);
             if (settings.autoExpandAll !== undefined) setAutoExpandAll(settings.autoExpandAll);
+            if (settings.plainTextMode !== undefined) setPlainTextMode(settings.plainTextMode);
             if (settings.selectedLogFiles) {
               const restoredFiles = new Set<string>(settings.selectedLogFiles);
               setSelectedLogFiles(restoredFiles);
@@ -457,6 +462,7 @@ function App() {
       const settings = {
         newestFirst,
         autoExpandAll,
+        plainTextMode,
         selectedLogFiles: Array.from(selectedLogFiles),
         severityFilter: Array.from(severityFilter),
         columnVisibility,
@@ -476,7 +482,7 @@ function App() {
         files: Array.from(selectedLogFiles) 
       });
     }
-  }, [newestFirst, autoExpandAll, selectedLogFiles, severityFilter, columnVisibility, columnWidths, selectedHistoryFile, startDate, startTime, endDate, endTime, vscode]);
+  }, [newestFirst, autoExpandAll, plainTextMode, selectedLogFiles, severityFilter, columnVisibility, columnWidths, selectedHistoryFile, startDate, startTime, endDate, endTime, vscode]);
 
   // Simuliere neue Logs alle 3 Sekunden (nur im Dev-Mode wenn pausiert ist false)
   useEffect(() => {
@@ -739,7 +745,19 @@ function App() {
             History
           {/* @ts-ignore */}
           </vscode-button>
-          
+
+          {/* Plain Text Toggle */}
+          {/* @ts-ignore */}
+          <vscode-button
+            onClick={() => setPlainTextMode(prev => !prev)}
+            appearance={plainTextMode ? 'primary' : 'secondary'}
+            style={{ minWidth: '60px', height: '26px' }}
+            title={plainTextMode ? 'Switch to parsed / structured view' : 'Switch to plain text log view'}
+          >
+            {plainTextMode ? 'Parsed' : 'Plain'}
+          {/* @ts-ignore */}
+          </vscode-button>
+
           {/* @ts-ignore */}
           <vscode-button 
             onClick={togglePause}
@@ -919,7 +937,7 @@ function App() {
           padding: '8px 12px',
           borderBottom: '1px solid var(--vscode-panel-border)',
           backgroundColor: 'var(--vscode-editorGroupHeader-tabsBackground)',
-          display: 'flex',
+          display: plainTextMode ? 'none' : 'flex',
           gap: '12px',
           fontSize: '11px',
           fontWeight: 600,
@@ -1148,8 +1166,33 @@ function App() {
             No logs to display
           </div>
         )}
-        
-        {filteredLogs.map((log, index) => {
+
+        {plainTextMode ? (
+          <div style={{
+            fontFamily: 'var(--vscode-editor-font-family), monospace',
+            fontSize: '12px',
+            padding: '4px 0',
+          }}>
+            {filteredLogs.map((log, logIndex) =>
+              (log.rawLines?.length ? log.rawLines : [log.message]).map((line, lineIndex) => (
+                <div
+                  key={`pt-${logIndex}-${lineIndex}`}
+                  style={{
+                    padding: '0 8px',
+                    lineHeight: '1.6',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-all',
+                    color: lineIndex === 0
+                      ? getSeverityColor(log.severity)
+                      : 'var(--vscode-editor-foreground)',
+                  }}
+                >
+                  {line}
+                </div>
+              ))
+            )}
+          </div>
+        ) : filteredLogs.map((log, index) => {
           const fileRef = getFileFromMetadata(log);
           return (
           <div key={`${log.identifier}-${log.timestamp}-${index}`}>
