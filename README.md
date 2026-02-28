@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-2.2.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.107.1-007ACC.svg)
 
@@ -35,6 +35,7 @@
 - **Multiple log files**: Monitor PVSS_II.log, WCCOActrl\*.log, and custom log files
 - **Pause/Resume**: Control log streaming on demand
 - **Newest First**: Toggle to show most recent events first
+- **Plain Text Mode**: Toggle between structured table view and classic plain text log output (default)
 
 ### 🔍 Advanced Filtering & Analysis
 

@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-02-28
+
+### Added
+
+- **📄 Plain Text Mode**: New view toggle between structured parsed view and plain text log output
+  - Renders raw log lines exactly as they appear in the log files (classic terminal feel)
+  - First line of each event color-coded by severity (WARNING = yellow, FATAL/SEVERE = red, etc.)
+  - Continuation lines (stacktrace, metadata) shown in default text color
+  - Toggle button `Plain` / `Parsed` in toolbar (between History and Pause buttons)
+  - **Plain Text Mode is the new default** – classic log window experience out of the box
+  - State persisted across panel close/reopen (per workspace)
+  - All existing filters (severity, search, file selection) work in both modes
+  - Column header row hidden automatically in plain text mode
+
 ## [2.1.0] - 2026-01-25
 
 ### Added
