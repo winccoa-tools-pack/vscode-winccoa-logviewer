@@ -666,6 +666,64 @@ function App() {
     return timestamp;
   };
 
+  // Render a plain text log line, making file paths + line numbers clickable.
+  // Handles multiple matches per line (e.g. stacktrace entries).
+  // Supported formats:
+  //   Absolute: c:/path/file.ctl          → clickable (no line)
+  //             c:/path/file.ctl:27        → clickable + jump to line 27
+  //             c:/path/file.ctl, Line: 27 → clickable + jump to line 27
+  //   Relative: utils\Logger.ctl:486      → clickable + jump to line 486 (line required to avoid false positives)
+  const renderPlainLine = (line: string): React.ReactNode => {
+    const EXT = 'ctl|ctlpp|js|ts|cpp|h|txt|py|cs';
+    // Group 1: absolute Windows path (forward or backslash)
+    // Group 2: relative backslash path (at least one backslash segment)
+    // Group 3: line number via :N suffix
+    // Group 4: line number via ,  Line: N pattern
+    const FILE_REGEX = new RegExp(
+      `([a-zA-Z]:[/\\\\][\\w/\\\\.()\\ -]+?\\.(?:${EXT})|(?:[\\w.-]+(?:\\\\[\\w.-]+)+)\\.(?:${EXT}))` +
+      `(?::(\\d+)|[,\\s]*[Ll]ine\\s*:\\s*(\\d+))?`,
+      'g'
+    );
+
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    let hasLinks = false;
+
+    while ((match = FILE_REGEX.exec(line)) !== null) {
+      const filePath = match[1];
+      const lineNum = match[2] ? parseInt(match[2]) : match[3] ? parseInt(match[3]) : undefined;
+      const isAbsolute = /^[a-zA-Z]:/.test(filePath);
+
+      // Relative paths only linked when we have a line number (avoid false positives)
+      if (!isAbsolute && !lineNum) continue;
+
+      hasLinks = true;
+
+      if (match.index > lastIndex) {
+        parts.push(line.slice(lastIndex, match.index));
+      }
+
+      const matchedText = match[0];
+      parts.push(
+        <span
+          key={match.index}
+          style={{ color: 'var(--color-string)', cursor: 'pointer', textDecoration: 'underline' }}
+          onClick={(e) => { e.stopPropagation(); handleFileClick(filePath, lineNum); }}
+          title={`Open ${filePath}${lineNum ? `:${lineNum}` : ''}`}
+        >
+          {matchedText}
+        </span>
+      );
+
+      lastIndex = match.index + matchedText.length;
+    }
+
+    if (!hasLinks) return <>{line}</>;
+    if (lastIndex < line.length) parts.push(line.slice(lastIndex));
+    return <>{parts}</>;
+  };
+
   return (
     <div style={{ 
       height: '100vh', 
@@ -1187,7 +1245,7 @@ function App() {
                       : 'var(--vscode-editor-foreground)',
                   }}
                 >
-                  {line}
+                  {renderPlainLine(line)}
                 </div>
               ))
             )}
