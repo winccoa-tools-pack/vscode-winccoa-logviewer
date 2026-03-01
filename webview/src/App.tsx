@@ -670,20 +670,43 @@ function App() {
 
   // Color tokens for plain mode (dark theme optimised)
   const PT = {
-    // Prefix zone (id, ts, sc) – same for INFO and DEBUG
-    PREFIX:        '#9b9bff',   // brighter purplish blue – identifier/timestamp/scope
-    // INFO
-    INFO_SEVERITY: '#4dbb5f',   // modern soft green – the "INFO" flag itself
-    INFO_DESC:     '#d4d4d4',   // near-white – message text
-    // DEBUG
-    DEBUG_SEVERITY: '#75beff',  // medium VSCode blue – the "DEBUG" flag
-    DEBUG_DESC:     '#75beff',  // same – message text
-    // Others (full-line single color)
-    WARNING:   '#e5c07b',
-    SEVERE:    '#e06c75',
-    FATAL:     '#ff2020',
-    LINK:      '#569cd6',   // VSCode blue for clickable paths
+    // === SEVERITY ===
+    INFO_SEVERITY:   '#98c379',  // VSCode-Grün
+    INFO_DESC:       '#d4d4d4',  // near-white
+    DEBUG_SEVERITY:  '#61afef',  // warmes Blau
+    DEBUG_DESC:      '#61afef',
+    WARNING:         '#e5c07b',  // gedämpftes Gelb
+    SEVERE:          '#e06c75',  // Rot
+    FATAL:           '#ff2020',  // Knall-Rot, bold
+    OTHER:           '#ce9178',  // Rosé-Gold
+    LINK:            '#569cd6',  // VSCode Dunkelblau
+
+    // === PREFIX / MANAGER ===
+    // WCCIL Familie — abgestufte Blautöne
+    WCCILdataSQLite: '#5a9fd4',  // kräftigstes Blau — Haupt-Datenmanager
+    WCCILdatabg:     '#6aaee0',  // etwas heller
+    WCCILproxy:      '#7abfed',  // noch heller
+    
+    // Eigene Farben
+    WCCILevent:      '#c49ab8',  // Mauve/Rosa
+    WCCILpmon:       '#d4956a',  // Peach/Apricot
+    WCCILsim:        '#6dbfb8',  // Blaugrün-Pastell
+
+    WCCOActrl:       '#a99cd4',  // Lavendel
+    WCCOAnextgenarch:'#7eb8d4',  // zurückgenommenes Blau-Pastell
+    WCCOAui:         '#b0a090',  // Neutrales Hellgrau warm
+    WCCOAvalarch:    '#b8a0c4',  // gedämpftes Lila-Rosa
+    node:            '#7dbf9e',  // Mintgrün
+    
+    // Fallback für unbekannte Manager
+    DEFAULT_PREFIX:  '#9b9bff',  // helles Violett-Blau
   } as const;
+
+  // Extract manager name from identifier field (e.g., "WCCOActrl    (6)" → "WCCOActrl")
+  const getManagerColor = (identifier: string): string => {
+    const managerName = identifier.trim().split(/\s+/)[0];
+    return (PT as any)[managerName] || PT.DEFAULT_PREFIX;
+  };
 
   // Fixed column min-widths in ch units (1ch = 1 monospace character).
   // Reference longest identifier: WCCILdataSQLite(0) = 18 chars.
@@ -771,18 +794,20 @@ function App() {
   // Render one raw log line with severity-aware colours + clickable paths.
   const renderPlainLine = (line: string, severity: LogSeverity, isFirstLine: boolean): React.ReactNode => {
     if (severity === 'OTHER') {
-      return <span style={{ color: 'var(--severity-other)' }}>{renderWithLinks(line)}</span>;
+      return <span style={{ color: PT.OTHER }}>{renderWithLinks(line)}</span>;
     }
 
     // Aligned rendering for PVSS first lines
     if (isFirstLine) {
       const fields = parsePvssFields(line);
       if (fields) {
+        const managerColor = getManagerColor(fields[0]);
+        
         if (severity === 'INFO') {
-          return renderAlignedFields(fields, PT.PREFIX, PT.INFO_SEVERITY, PT.INFO_DESC);
+          return renderAlignedFields(fields, managerColor, PT.INFO_SEVERITY, PT.INFO_DESC);
         }
         if (severity === 'DEBUG') {
-          return renderAlignedFields(fields, PT.PREFIX, PT.DEBUG_SEVERITY, PT.DEBUG_DESC);
+          return renderAlignedFields(fields, managerColor, PT.DEBUG_SEVERITY, PT.DEBUG_DESC);
         }
         const color =
           severity === 'FATAL'   ? PT.FATAL   :
