@@ -1393,6 +1393,8 @@ function App() {
             fontFamily: 'var(--vscode-editor-font-family), monospace',
             fontSize: '12px',
             padding: '4px 0',
+            overflowX: 'auto',
+            minHeight: '100%',
           }}>
             {filteredLogs.map((log, logIndex) => {
               const lines = log.rawLines?.length ? log.rawLines : [log.message];
@@ -1404,8 +1406,7 @@ function App() {
                     paddingLeft: '4px',
                     paddingRight: '8px',
                     lineHeight: '1.6',
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-all',
+                    whiteSpace: 'pre',
                     marginTop: isCritical && lineIndex === 0 ? '1px' : undefined,
                     marginBottom: isCritical && lineIndex === lines.length - 1 ? '1px' : undefined,
                   }}
