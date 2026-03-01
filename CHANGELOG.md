@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-03-01
+
+### Changed
+
+- **🎨 Plain Text Mode: Syntax Highlighting Overhaul**
+  - **INFO**: metadata portion (identifier, timestamp, scope, severity, msgnum) dimmed `#666666`, description text near-white `#d4d4d4` — two-tone treatment for visual separation
+  - **DEBUG**: entire line in `#4fc1ff`
+  - **WARNING**: entire line in `#e5c07b`
+  - **SEVERE**: entire line in `#e06c75`
+  - **FATAL**: entire line in `#ff2020`, bold — clearly more intense than SEVERE
+  - **OTHER**: unchanged purple/lilac
+  - **Clickable paths**: color changed to VSCode blue `#569cd6` (was orange)
+- **Spacing & breathing room**
+  - `line-height: 1.6` (improved readability)
+  - `padding-left: 4px` per line for slight left margin
+  - FATAL and SEVERE entries get 1px extra margin top/bottom — critical errors visually separate from neighbors
+- INFO continuation lines (Script:, Line:, Stacktrace:) rendered in dimmed gray matching meta style
+
 ## [2.2.1] - 2026-03-01
 
 ### Added

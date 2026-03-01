@@ -666,62 +666,174 @@ function App() {
     return timestamp;
   };
 
-  // Render a plain text log line, making file paths + line numbers clickable.
-  // Handles multiple matches per line (e.g. stacktrace entries).
-  // Supported formats:
-  //   Absolute: c:/path/file.ctl          → clickable (no line)
-  //             c:/path/file.ctl:27        → clickable + jump to line 27
-  //             c:/path/file.ctl, Line: 27 → clickable + jump to line 27
-  //   Relative: utils\Logger.ctl:486      → clickable + jump to line 486 (line required to avoid false positives)
-  const renderPlainLine = (line: string): React.ReactNode => {
+  // ─── Plain Mode Syntax Highlighting ──────────────────────────────────────────
+
+  // Color tokens for plain mode (dark theme optimised)
+  const PT = {
+    // Prefix zone (id, ts, sc) – same for INFO and DEBUG
+    PREFIX:        '#9b9bff',   // brighter purplish blue – identifier/timestamp/scope
+    // INFO
+    INFO_SEVERITY: '#4dbb5f',   // modern soft green – the "INFO" flag itself
+    INFO_DESC:     '#d4d4d4',   // near-white – message text
+    // DEBUG
+    DEBUG_SEVERITY: '#75beff',  // medium VSCode blue – the "DEBUG" flag
+    DEBUG_DESC:     '#75beff',  // same – message text
+    // Others (full-line single color)
+    WARNING:   '#e5c07b',
+    SEVERE:    '#e06c75',
+    FATAL:     '#ff2020',
+    LINK:      '#569cd6',   // VSCode blue for clickable paths
+  } as const;
+
+  // Fixed column min-widths in ch units (1ch = 1 monospace character).
+  // Reference longest identifier: WCCILdataSQLite(0) = 18 chars.
+  const PT_COL = {
+    id: '21ch',  // identifier + (num)
+    ts: '25ch',  // 2026.03.01 09:47:31.219 = 23 chars
+    sc: '14ch',  // scope (SimaCtrl = 8, CTRL = 4 …)
+    sv: '10ch',  // severity (WARNING = 7)
+    mn:  '8ch',  // message number
+  } as const;
+
+  // Parse a PVSS first-line into its 6 comma-separated fields (trimmed).
+  // Format: IDENTIFIER (N), TIMESTAMP, SCOPE, SEVERITY, MSGNUM, MESSAGE
+  const parsePvssFields = (line: string): [string, string, string, string, string, string] | null => {
+    const m = /^([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*(.*)/.exec(line);
+    return m ? [m[1].trim(), m[2].trim(), m[3].trim(), m[4].trim(), m[5].trim(), m[6]] : null;
+  };
+
+  // Walk a text string and replace all file-path matches with clickable <span>s.
+  const renderWithLinks = (text: string): React.ReactNode => {
     const EXT = 'ctl|ctlpp|js|ts|cpp|h|txt|py|cs';
-    // Group 1: absolute Windows path (forward or backslash)
-    // Group 2: relative backslash path (at least one backslash segment)
-    // Group 3: line number via :N suffix
-    // Group 4: line number via ,  Line: N pattern
     const FILE_REGEX = new RegExp(
       `([a-zA-Z]:[/\\\\][\\w/\\\\.()\\ -]+?\\.(?:${EXT})|(?:[\\w.-]+(?:\\\\[\\w.-]+)+)\\.(?:${EXT}))` +
       `(?::(\\d+)|[,\\s]*[Ll]ine\\s*:\\s*(\\d+))?`,
       'g'
     );
-
     const parts: React.ReactNode[] = [];
     let lastIndex = 0;
     let match: RegExpExecArray | null;
     let hasLinks = false;
 
-    while ((match = FILE_REGEX.exec(line)) !== null) {
+    while ((match = FILE_REGEX.exec(text)) !== null) {
       const filePath = match[1];
       const lineNum = match[2] ? parseInt(match[2]) : match[3] ? parseInt(match[3]) : undefined;
-      const isAbsolute = /^[a-zA-Z]:/.test(filePath);
-
-      // Relative paths only linked when we have a line number (avoid false positives)
-      if (!isAbsolute && !lineNum) continue;
-
+      if (!/^[a-zA-Z]:/.test(filePath) && !lineNum) continue;
       hasLinks = true;
-
-      if (match.index > lastIndex) {
-        parts.push(line.slice(lastIndex, match.index));
-      }
-
-      const matchedText = match[0];
+      if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
       parts.push(
         <span
           key={match.index}
-          style={{ color: 'var(--color-string)', cursor: 'pointer', textDecoration: 'underline' }}
+          style={{ color: PT.LINK, cursor: 'pointer', textDecoration: 'underline' }}
           onClick={(e) => { e.stopPropagation(); handleFileClick(filePath, lineNum); }}
           title={`Open ${filePath}${lineNum ? `:${lineNum}` : ''}`}
         >
-          {matchedText}
+          {match[0]}
         </span>
       );
-
-      lastIndex = match.index + matchedText.length;
+      lastIndex = match.index + match[0].length;
     }
 
-    if (!hasLinks) return <>{line}</>;
-    if (lastIndex < line.length) parts.push(line.slice(lastIndex));
+    if (!hasLinks) return <>{text}</>;
+    if (lastIndex < text.length) parts.push(text.slice(lastIndex));
     return <>{parts}</>;
+  };
+
+  // Render aligned PVSS fields. Each meta field gets a fixed min-width so the
+  // description always starts at the same horizontal position regardless of
+  // identifier/scope length.
+  // - metaColor:     id, ts, sc fields
+  // - severityColor: the sv (severity flag) field – can differ from meta
+  // - descColor:     mn + message text
+  const renderAlignedFields = (
+    fields: [string, string, string, string, string, string],
+    metaColor: string,
+    severityColor: string,
+    descColor: string,
+    bold?: boolean,
+  ): React.ReactNode => {
+    const [id, ts, sc, sv, mn, desc] = fields;
+    const mc: React.CSSProperties = { display: 'inline-block', color: metaColor };
+    return (
+      <>
+        <span style={{ ...mc, minWidth: PT_COL.id }}>{id},</span>{' '}
+        <span style={{ ...mc, minWidth: PT_COL.ts }}>{ts},</span>{' '}
+        <span style={{ ...mc, minWidth: PT_COL.sc }}>{sc},</span>{' '}
+        <span style={{ display: 'inline-block', color: severityColor, minWidth: PT_COL.sv }}>{sv},</span>{' '}
+        <span style={{ color: descColor, minWidth: PT_COL.mn, display: 'inline-block' }}>{mn},</span>{' '}
+        <span style={{ color: descColor, fontWeight: bold ? 700 : undefined }}>
+          {renderWithLinks(desc)}
+        </span>
+      </>
+    );
+  };
+
+  // Render one raw log line with severity-aware colours + clickable paths.
+  const renderPlainLine = (line: string, severity: LogSeverity, isFirstLine: boolean): React.ReactNode => {
+    if (severity === 'OTHER') {
+      return <span style={{ color: 'var(--severity-other)' }}>{renderWithLinks(line)}</span>;
+    }
+
+    // Aligned rendering for PVSS first lines
+    if (isFirstLine) {
+      const fields = parsePvssFields(line);
+      if (fields) {
+        if (severity === 'INFO') {
+          return renderAlignedFields(fields, PT.PREFIX, PT.INFO_SEVERITY, PT.INFO_DESC);
+        }
+        if (severity === 'DEBUG') {
+          return renderAlignedFields(fields, PT.PREFIX, PT.DEBUG_SEVERITY, PT.DEBUG_DESC);
+        }
+        const color =
+          severity === 'FATAL'   ? PT.FATAL   :
+          severity === 'SEVERE'  ? PT.SEVERE  :
+          PT.WARNING;
+        return renderAlignedFields(fields, color, color, color, severity === 'FATAL');
+      }
+    }
+
+    // Continuation lines – render tags in severity color, content in near-white
+    const tagColor =
+      severity === 'FATAL'   ? PT.FATAL   :
+      severity === 'SEVERE'  ? PT.SEVERE  :
+      severity === 'WARNING' ? PT.WARNING :
+      severity === 'DEBUG'   ? PT.DEBUG_DESC :
+      PT.PREFIX; // INFO tags in prefix color
+
+    // Pattern 1: Tag keywords (Note:, StackTrace:, Script:, Line:, etc.)
+    const tagMatch = line.match(/^(\s*)(Note|StackTrace|Script|Line|Aborted|Failed|Passed|KnownBugs|Skipped|Instable|Checks done):(\s*)(.*)/);
+    if (tagMatch) {
+      const [, leadingWs, tag, trailingWs, rest] = tagMatch;
+      return (
+        <>
+          <span style={{ color: tagColor, fontWeight: severity === 'FATAL' ? 700 : undefined }}>
+            {leadingWs}{tag}:
+          </span>
+          <span style={{ color: PT.INFO_DESC }}>{trailingWs}{renderWithLinks(rest)}</span>
+        </>
+      );
+    }
+
+    // Pattern 2: Stack frame (signature + "at" + location)
+    const stackFrameMatch = line.match(/^(\s+)(.+?)(\s+at\s+)(.*)$/);
+    if (stackFrameMatch) {
+      const [, leadingWs, signature, atKeyword, location] = stackFrameMatch;
+      return (
+        <>
+          <span style={{ color: tagColor, fontWeight: severity === 'FATAL' ? 700 : undefined }}>
+            {leadingWs}{signature}{atKeyword}
+          </span>
+          <span style={{ color: PT.INFO_DESC }}>{renderWithLinks(location)}</span>
+        </>
+      );
+    }
+
+    // Fallback: whole line in tag color (rare, for unrecognized patterns)
+    return (
+      <span style={{ color: tagColor, fontWeight: severity === 'FATAL' ? 700 : undefined }}>
+        {renderWithLinks(line)}
+      </span>
+    );
   };
 
   return (
@@ -1231,24 +1343,26 @@ function App() {
             fontSize: '12px',
             padding: '4px 0',
           }}>
-            {filteredLogs.map((log, logIndex) =>
-              (log.rawLines?.length ? log.rawLines : [log.message]).map((line, lineIndex) => (
+            {filteredLogs.map((log, logIndex) => {
+              const lines = log.rawLines?.length ? log.rawLines : [log.message];
+              const isCritical = log.severity === 'FATAL' || log.severity === 'SEVERE';
+              return lines.map((line, lineIndex) => (
                 <div
                   key={`pt-${logIndex}-${lineIndex}`}
                   style={{
-                    padding: '0 8px',
+                    paddingLeft: '4px',
+                    paddingRight: '8px',
                     lineHeight: '1.6',
                     whiteSpace: 'pre-wrap',
                     wordBreak: 'break-all',
-                    color: lineIndex === 0
-                      ? getSeverityColor(log.severity)
-                      : 'var(--vscode-editor-foreground)',
+                    marginTop: isCritical && lineIndex === 0 ? '1px' : undefined,
+                    marginBottom: isCritical && lineIndex === lines.length - 1 ? '1px' : undefined,
                   }}
                 >
-                  {renderPlainLine(line)}
+                  {renderPlainLine(line, log.severity, lineIndex === 0)}
                 </div>
-              ))
-            )}
+              ));
+            })}
           </div>
         ) : filteredLogs.map((log, index) => {
           const fileRef = getFileFromMetadata(log);
