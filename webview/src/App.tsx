@@ -1372,7 +1372,8 @@ function App() {
         ref={logListRef}
         style={{ 
           flex: 1, 
-          overflow: 'auto', 
+          overflowY: 'auto',
+          overflowX: 'auto',
           padding: '8px',
           backgroundColor: 'var(--vscode-editor-background)'
         }}
@@ -1393,8 +1394,6 @@ function App() {
             fontFamily: 'var(--vscode-editor-font-family), monospace',
             fontSize: '12px',
             padding: '4px 0',
-            overflowX: 'auto',
-            minHeight: '100%',
           }}>
             {filteredLogs.map((log, logIndex) => {
               const lines = log.rawLines?.length ? log.rawLines : [log.message];
