@@ -828,9 +828,24 @@ function App() {
   ): React.ReactNode => {
     const [id, ts, sc, sv, mn, desc] = fields;
     const mc: React.CSSProperties = { display: 'inline-block', color: metaColor };
+    
+    // Split identifier into name and number for right-aligned numbers
+    const idMatch = id.match(/^(.+?)(\(\d+\))$/);
+    const idName = idMatch ? idMatch[1] : id;
+    const idNum = idMatch ? idMatch[2] : '';
+    
     return (
       <>
-        <span style={{ ...mc, minWidth: PT_COL.id }}>{id},</span>{' '}
+        <span style={{ 
+          ...mc, 
+          minWidth: PT_COL.id, 
+          display: 'inline-flex', 
+          justifyContent: 'space-between' 
+        }}>
+          <span>{idName}</span>
+          <span>{idNum}</span>
+        </span>
+        <span style={{ color: metaColor }}>,</span>{' '}
         <span style={{ ...mc, minWidth: PT_COL.ts }}>{ts},</span>{' '}
         <span style={{ ...mc, minWidth: PT_COL.sc }}>{sc},</span>{' '}
         <span style={{ display: 'inline-block', color: severityColor, minWidth: PT_COL.sv }}>{sv},</span>{' '}
