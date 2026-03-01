@@ -617,26 +617,20 @@ function App() {
 
   const getSeverityColor = (severity: LogSeverity) => {
     switch (severity) {
-      case 'SEVERE': return 'var(--severity-severe)';
-      case 'FATAL': return 'var(--severity-error)';
-      case 'WARNING': return 'var(--severity-warning)';
-      case 'INFO': return 'var(--severity-info)';
-      case 'DEBUG': return 'var(--severity-debug)';
-      default: return 'var(--severity-other)';
+      case 'SEVERE': return PT.SEVERE;
+      case 'FATAL': return PT.FATAL;
+      case 'WARNING': return PT.WARNING;
+      case 'INFO': return PT.INFO_SEVERITY;
+      case 'DEBUG': return PT.DEBUG_SEVERITY;
+      default: return PT.OTHER;
     }
   };
 
   const getSeverityBgColor = (severity: LogSeverity, isActive: boolean) => {
     if (!isActive) return 'transparent';
-    
-    switch (severity) {
-      case 'SEVERE': return 'var(--severity-severe-bg)';
-      case 'FATAL': return 'var(--severity-error-bg)';
-      case 'WARNING': return 'var(--severity-warning-bg)';
-      case 'INFO': return 'var(--severity-info-bg)';
-      case 'DEBUG': return 'var(--severity-debug-bg)';
-      default: return 'var(--severity-other-bg)';
-    }
+    // Use color with 15% opacity for background
+    const color = getSeverityColor(severity);
+    return color + '26'; // Append alpha channel (15% ≈ 0x26)
   };
 
   const formatTime = (timestamp: string) => {
@@ -668,8 +662,8 @@ function App() {
 
   // ─── Plain Mode Syntax Highlighting ──────────────────────────────────────────
 
-  // Color tokens for plain mode (dark theme optimised)
-  const PT = {
+  // Color tokens for DARK theme
+  const PT_DARK = {
     // === SEVERITY ===
     INFO_SEVERITY:   '#98c379',  // VSCode-Grün
     INFO_DESC:       '#d4d4d4',  // near-white
@@ -701,6 +695,63 @@ function App() {
     // Fallback für unbekannte Manager
     DEFAULT_PREFIX:  '#9b9bff',  // helles Violett-Blau
   } as const;
+
+  // Color tokens for LIGHT theme
+  const PT_LIGHT = {
+    // === SEVERITY ===
+    INFO_SEVERITY:   '#3d8a3d',  // dunkleres Grün — auf weiß lesbar
+    INFO_DESC:       '#1a1a1a',  // fast schwarz statt near-white
+    DEBUG_SEVERITY:  '#0070c1',  // kräftiges Blau
+    DEBUG_DESC:      '#0070c1',
+    WARNING:         '#b5830a',  // dunkleres Gold-Gelb — nicht zu grell
+    SEVERE:          '#c0373f',  // dunkleres Rot
+    FATAL:           '#a00000',  // tiefes Dunkelrot — schwerer als SEVERE
+    OTHER:           '#a0522d',  // Sienna/Terracotta — dunkles Rosé-Gold Äquivalent
+    LINK:            '#0451a5',  // VSCode Light Dunkelblau
+
+    // === PREFIX / MANAGER ===
+    // WCCIL Familie — abgestufte dunkle Blautöne
+    WCCILdataSQLite: '#1a6fa0',  // kräftiges Dunkelblau
+    WCCILdatabg:     '#2a7db0',  // etwas heller
+    WCCILproxy:      '#3a8dc0',  // noch heller
+
+    // Eigene Farben
+    WCCILevent:      '#8b5a7a',  // dunkles Mauve
+    WCCILpmon:       '#b56a30',  // dunkles Peach/Burnt Orange
+    WCCILsim:        '#3a8f8a',  // dunkles Blaugrün
+
+    WCCOActrl:       '#6a5aad',  // dunkles Lavendel/Slate
+    WCCOAnextgenarch:'#4a7fa0',  // dunkles Blau-Pastell
+    WCCOAui:         '#7a6a5a',  // dunkles Warmgrau
+    WCCOAvalarch:    '#8a6080',  // dunkles Lila-Rosa
+    node:            '#3a7a5a',  // dunkles Mintgrün
+
+    // Fallback
+    DEFAULT_PREFIX:  '#5a4aaa',  // dunkles Violett-Blau
+  } as const;
+
+  // Detect VS Code theme and auto-switch palette
+  const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('dark');
+
+  useEffect(() => {
+    const detectTheme = () => {
+      // VS Code sets body classes: vscode-light, vscode-dark, vscode-high-contrast
+      const isLight = document.body.classList.contains('vscode-light');
+      setCurrentTheme(isLight ? 'light' : 'dark');
+    };
+
+    // Initial detection
+    detectTheme();
+
+    // Watch for theme changes (user switches theme in VS Code)
+    const observer = new MutationObserver(detectTheme);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Active palette based on current theme
+  const PT = currentTheme === 'light' ? PT_LIGHT : PT_DARK;
 
   // Extract manager name from identifier field (e.g., "WCCOActrl    (6)" → "WCCOActrl")
   const getManagerColor = (identifier: string): string => {
