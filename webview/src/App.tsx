@@ -666,6 +666,43 @@ function App() {
     return timestamp;
   };
 
+  // Render a plain text log line, making file paths + line numbers clickable
+  const renderPlainLine = (line: string): React.ReactNode => {
+    // Match Windows (c:/...) or Unix (/...) file paths with known extensions
+    // Optionally followed by ",  Line: 28" or similar
+    const filePathRegex = /([a-zA-Z]:[/\\][^,\n\r]+?\.(ctl|ctlpp|js|ts|cpp|h|txt|py|cs))(?:[,\s]*[Ll]ine\s*:\s*(\d+))?/;
+    const match = filePathRegex.exec(line);
+
+    if (!match) return <>{line}</>;
+
+    const before = line.slice(0, match.index);
+    const filePath = match[1];
+    const lineNum = match[3] ? parseInt(match[3]) : undefined;
+    const matchedText = match[0];
+    const after = line.slice(match.index + matchedText.length);
+
+    return (
+      <>
+        {before}
+        <span
+          style={{
+            color: 'var(--vscode-textLink-foreground)',
+            cursor: 'pointer',
+            textDecoration: 'underline',
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleFileClick(filePath, lineNum);
+          }}
+          title={`Open ${filePath}${lineNum ? `:${lineNum}` : ''}`}
+        >
+          {matchedText}
+        </span>
+        {after}
+      </>
+    );
+  };
+
   return (
     <div style={{ 
       height: '100vh', 
@@ -1187,7 +1224,7 @@ function App() {
                       : 'var(--vscode-editor-foreground)',
                   }}
                 >
-                  {line}
+                  {renderPlainLine(line)}
                 </div>
               ))
             )}

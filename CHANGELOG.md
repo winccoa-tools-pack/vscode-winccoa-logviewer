@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] - 2026-03-01
+
+### Added
+
+- **🔗 Clickable File Paths in Plain Text Mode**: File paths with known extensions (`.ctl`, `.ctlpp`, `.js`, `.ts`, etc.) are now detected via regex and rendered as clickable links
+  - Supports Windows paths (`c:/repos/...`) in raw log lines
+  - Automatically extracts line number from `Line: 28` patterns in the same log entry
+  - Click opens the file directly in the editor, jumping to the correct line
+
 ## [2.2.0] - 2026-02-28
 
 ### Added
