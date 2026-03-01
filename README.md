@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-2.2.1-blue.svg)
+![Version](https://img.shields.io/badge/version-2.3.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![VS Code](https://img.shields.io/badge/VS%20Code-1.107.1-007ACC.svg)
 
@@ -14,8 +14,9 @@
 
 ---
 
-> **Disclaimer:**
-> This is the first stable release (v1.0.2) of the WinCC OA LogViewer extension. Not all features are fully implemented and some functions may not work perfectly yet. Please report any issues you encounter.
+> **Latest Update (v2.3.0):**
+> Enhanced plain text mode with unified color palette, light/dark theme support, perfect column alignment, and horizontal scrolling. See [CHANGELOG](CHANGELOG.md) for details.
+
 > **Tip:** If the extension doesn't work as expected, try `Ctrl+Shift+P` → `Reload Window` to refresh.
 
 ---
@@ -36,6 +37,10 @@
 - **Pause/Resume**: Control log streaming on demand
 - **Newest First**: Toggle to show most recent events first
 - **Plain Text Mode**: Toggle between structured table view and classic plain text log output (default)
+  - **🎨 Color Coded**: Manager-specific colors, severity-based highlighting
+  - **☀️ Theme Support**: Automatic light/dark theme detection
+  - **📐 Perfect Alignment**: Fixed-width columns for clean vertical alignment
+  - **↔️ Horizontal Scroll**: Terminal-like scrolling for long lines
 
 ### 🔍 Advanced Filtering & Analysis
 
@@ -82,23 +87,29 @@
 
 ### Current Limitations
 
-1. **Performance with Large Logs**:
+1. **Relative Paths in Stacktraces** (v2.3.0):
+    - File paths in stacktrace continuation lines (e.g., `classes\oaTest\OaTestBase.ctl:1025`) are relative
+    - VS Code requires absolute paths to open files
+    - Impact: Clicking on stacktrace file paths shows "Could not open file" error
+    - Status: Will be fixed in v2.4.0 by resolving paths against WinCC OA project directory
+
+2. **Performance with Large Logs**:
     - UI can become slow with 10,000+ events
     - No virtualized rendering yet (planned for future release)
     - Recommendation: Use time range filtering when loading history
 
-2. **File Re-Activation Floods History** (known, not fixed):
+3. **File Re-Activation Floods History** (known, not fixed):
     - When deselecting and re-selecting a log file, all historical events are replayed
     - Root cause: FileWatcher maintains file position even when file is unwatched
     - Impact: Can cause duplicate entries in UI if file was previously watched
     - Workaround: Clear logs after re-activation or avoid toggling files repeatedly
     - Status: Will be fixed in future release
 
-3. **Log Event Ordering**:
+4. **Log Event Ordering**:
     - Multi-line log events (with stacktraces) are correctly parsed since v0.2.2
     - Parser buffer is properly flushed to prevent ordering issues
 
-4. **Automatic Path Detection**:
+5. **Automatic Path Detection**:
     - Requires WinCC OA Control extension installed and active
     - Falls back to workspace or static path if Control not available
 

@@ -617,26 +617,20 @@ function App() {
 
   const getSeverityColor = (severity: LogSeverity) => {
     switch (severity) {
-      case 'SEVERE': return 'var(--severity-severe)';
-      case 'FATAL': return 'var(--severity-error)';
-      case 'WARNING': return 'var(--severity-warning)';
-      case 'INFO': return 'var(--severity-info)';
-      case 'DEBUG': return 'var(--severity-debug)';
-      default: return 'var(--severity-other)';
+      case 'SEVERE': return PT.SEVERE;
+      case 'FATAL': return PT.FATAL;
+      case 'WARNING': return PT.WARNING;
+      case 'INFO': return PT.INFO_SEVERITY;
+      case 'DEBUG': return PT.DEBUG_SEVERITY;
+      default: return PT.OTHER;
     }
   };
 
   const getSeverityBgColor = (severity: LogSeverity, isActive: boolean) => {
     if (!isActive) return 'transparent';
-    
-    switch (severity) {
-      case 'SEVERE': return 'var(--severity-severe-bg)';
-      case 'FATAL': return 'var(--severity-error-bg)';
-      case 'WARNING': return 'var(--severity-warning-bg)';
-      case 'INFO': return 'var(--severity-info-bg)';
-      case 'DEBUG': return 'var(--severity-debug-bg)';
-      default: return 'var(--severity-other-bg)';
-    }
+    // Use color with 15% opacity for background
+    const color = getSeverityColor(severity);
+    return color + '26'; // Append alpha channel (15% ≈ 0x26)
   };
 
   const formatTime = (timestamp: string) => {
@@ -666,62 +660,231 @@ function App() {
     return timestamp;
   };
 
-  // Render a plain text log line, making file paths + line numbers clickable.
-  // Handles multiple matches per line (e.g. stacktrace entries).
-  // Supported formats:
-  //   Absolute: c:/path/file.ctl          → clickable (no line)
-  //             c:/path/file.ctl:27        → clickable + jump to line 27
-  //             c:/path/file.ctl, Line: 27 → clickable + jump to line 27
-  //   Relative: utils\Logger.ctl:486      → clickable + jump to line 486 (line required to avoid false positives)
-  const renderPlainLine = (line: string): React.ReactNode => {
+  // ─── Plain Mode Syntax Highlighting ──────────────────────────────────────────
+
+  // Color tokens for DARK theme
+  const PT_DARK = {
+    // === SEVERITY ===
+    INFO_SEVERITY:   '#98c379',  // VSCode-Grün
+    INFO_DESC:       '#d4d4d4',  // near-white
+    DEBUG_SEVERITY:  '#61afef',  // warmes Blau
+    DEBUG_DESC:      '#61afef',
+    WARNING:         '#e5c07b',  // gedämpftes Gelb
+    SEVERE:          '#e06c75',  // Rot
+    FATAL:           '#ff2020',  // Knall-Rot, bold
+    OTHER:           '#ce9178',  // Rosé-Gold
+    LINK:            '#569cd6',  // VSCode Dunkelblau
+
+    // === PREFIX / MANAGER ===
+    // WCCIL Familie — abgestufte Blautöne
+    WCCILdataSQLite: '#5a9fd4',  // kräftigstes Blau — Haupt-Datenmanager
+    WCCILdatabg:     '#6aaee0',  // etwas heller
+    WCCILproxy:      '#7abfed',  // noch heller
+    
+    // Eigene Farben
+    WCCILevent:      '#c49ab8',  // Mauve/Rosa
+    WCCILpmon:       '#d4956a',  // Peach/Apricot
+    WCCILsim:        '#6dbfb8',  // Blaugrün-Pastell
+
+    WCCOActrl:       '#a99cd4',  // Lavendel
+    WCCOAnextgenarch:'#7eb8d4',  // zurückgenommenes Blau-Pastell
+    WCCOAui:         '#b0a090',  // Neutrales Hellgrau warm
+    WCCOAvalarch:    '#b8a0c4',  // gedämpftes Lila-Rosa
+    node:            '#7dbf9e',  // Mintgrün
+    
+    // Fallback für unbekannte Manager
+    DEFAULT_PREFIX:  '#9b9bff',  // helles Violett-Blau
+  } as const;
+
+  // Color tokens for LIGHT theme
+  const PT_LIGHT = {
+    // === SEVERITY ===
+    INFO_SEVERITY:   '#3d8a3d',  // dunkleres Grün — auf weiß lesbar
+    INFO_DESC:       '#1a1a1a',  // fast schwarz statt near-white
+    DEBUG_SEVERITY:  '#0070c1',  // kräftiges Blau
+    DEBUG_DESC:      '#0070c1',
+    WARNING:         '#b5830a',  // dunkleres Gold-Gelb — nicht zu grell
+    SEVERE:          '#c0373f',  // dunkleres Rot
+    FATAL:           '#a00000',  // tiefes Dunkelrot — schwerer als SEVERE
+    OTHER:           '#a0522d',  // Sienna/Terracotta — dunkles Rosé-Gold Äquivalent
+    LINK:            '#0451a5',  // VSCode Light Dunkelblau
+
+    // === PREFIX / MANAGER ===
+    // WCCIL Familie — abgestufte dunkle Blautöne
+    WCCILdataSQLite: '#1a6fa0',  // kräftiges Dunkelblau
+    WCCILdatabg:     '#2a7db0',  // etwas heller
+    WCCILproxy:      '#3a8dc0',  // noch heller
+
+    // Eigene Farben
+    WCCILevent:      '#8b5a7a',  // dunkles Mauve
+    WCCILpmon:       '#b56a30',  // dunkles Peach/Burnt Orange
+    WCCILsim:        '#3a8f8a',  // dunkles Blaugrün
+
+    WCCOActrl:       '#6a5aad',  // dunkles Lavendel/Slate
+    WCCOAnextgenarch:'#4a7fa0',  // dunkles Blau-Pastell
+    WCCOAui:         '#7a6a5a',  // dunkles Warmgrau
+    WCCOAvalarch:    '#8a6080',  // dunkles Lila-Rosa
+    node:            '#3a7a5a',  // dunkles Mintgrün
+
+    // Fallback
+    DEFAULT_PREFIX:  '#5a4aaa',  // dunkles Violett-Blau
+  } as const;
+
+  // Detect VS Code theme and auto-switch palette
+  const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>('dark');
+
+  useEffect(() => {
+    const detectTheme = () => {
+      // VS Code sets body classes: vscode-light, vscode-dark, vscode-high-contrast
+      const isLight = document.body.classList.contains('vscode-light');
+      setCurrentTheme(isLight ? 'light' : 'dark');
+    };
+
+    // Initial detection
+    detectTheme();
+
+    // Watch for theme changes (user switches theme in VS Code)
+    const observer = new MutationObserver(detectTheme);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+
+    return () => observer.disconnect();
+  }, []);
+
+  // Active palette based on current theme
+  const PT = currentTheme === 'light' ? PT_LIGHT : PT_DARK;
+
+  // Extract manager name from identifier field (e.g., "WCCOActrl    (6)" → "WCCOActrl")
+  const getManagerColor = (identifier: string): string => {
+    const managerName = identifier.trim().split(/\s+/)[0];
+    return (PT as any)[managerName] || PT.DEFAULT_PREFIX;
+  };
+
+  // Fixed column min-widths in ch units (1ch = 1 monospace character).
+  // Reference longest identifier: WCCILdataSQLite(0) = 18 chars.
+  const PT_COL = {
+    id: '21ch',  // identifier + (num)
+    ts: '25ch',  // 2026.03.01 09:47:31.219 = 23 chars
+    sc: '14ch',  // scope (SimaCtrl = 8, CTRL = 4 …)
+    sv: '10ch',  // severity (WARNING = 7)
+    mn:  '8ch',  // message number
+  } as const;
+
+  // Parse a PVSS first-line into its 6 comma-separated fields (trimmed).
+  // Format: IDENTIFIER (N), TIMESTAMP, SCOPE, SEVERITY, MSGNUM, MESSAGE
+  const parsePvssFields = (line: string): [string, string, string, string, string, string] | null => {
+    const m = /^([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*([^,]+),\s*(.*)/.exec(line);
+    return m ? [m[1].trim(), m[2].trim(), m[3].trim(), m[4].trim(), m[5].trim(), m[6]] : null;
+  };
+
+  // Walk a text string and replace all file-path matches with clickable <span>s.
+  const renderWithLinks = (text: string): React.ReactNode => {
     const EXT = 'ctl|ctlpp|js|ts|cpp|h|txt|py|cs';
-    // Group 1: absolute Windows path (forward or backslash)
-    // Group 2: relative backslash path (at least one backslash segment)
-    // Group 3: line number via :N suffix
-    // Group 4: line number via ,  Line: N pattern
     const FILE_REGEX = new RegExp(
       `([a-zA-Z]:[/\\\\][\\w/\\\\.()\\ -]+?\\.(?:${EXT})|(?:[\\w.-]+(?:\\\\[\\w.-]+)+)\\.(?:${EXT}))` +
       `(?::(\\d+)|[,\\s]*[Ll]ine\\s*:\\s*(\\d+))?`,
       'g'
     );
-
     const parts: React.ReactNode[] = [];
     let lastIndex = 0;
     let match: RegExpExecArray | null;
     let hasLinks = false;
 
-    while ((match = FILE_REGEX.exec(line)) !== null) {
+    while ((match = FILE_REGEX.exec(text)) !== null) {
       const filePath = match[1];
       const lineNum = match[2] ? parseInt(match[2]) : match[3] ? parseInt(match[3]) : undefined;
-      const isAbsolute = /^[a-zA-Z]:/.test(filePath);
-
-      // Relative paths only linked when we have a line number (avoid false positives)
-      if (!isAbsolute && !lineNum) continue;
-
+      if (!/^[a-zA-Z]:/.test(filePath) && !lineNum) continue;
       hasLinks = true;
-
-      if (match.index > lastIndex) {
-        parts.push(line.slice(lastIndex, match.index));
-      }
-
-      const matchedText = match[0];
+      if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index));
       parts.push(
         <span
           key={match.index}
-          style={{ color: 'var(--color-string)', cursor: 'pointer', textDecoration: 'underline' }}
+          style={{ color: PT.LINK, cursor: 'pointer', textDecoration: 'underline' }}
           onClick={(e) => { e.stopPropagation(); handleFileClick(filePath, lineNum); }}
           title={`Open ${filePath}${lineNum ? `:${lineNum}` : ''}`}
         >
-          {matchedText}
+          {match[0]}
         </span>
       );
-
-      lastIndex = match.index + matchedText.length;
+      lastIndex = match.index + match[0].length;
     }
 
-    if (!hasLinks) return <>{line}</>;
-    if (lastIndex < line.length) parts.push(line.slice(lastIndex));
+    if (!hasLinks) return <>{text}</>;
+    if (lastIndex < text.length) parts.push(text.slice(lastIndex));
     return <>{parts}</>;
+  };
+
+  // Render aligned PVSS fields. Each meta field gets a fixed min-width so the
+  // description always starts at the same horizontal position regardless of
+  // identifier/scope length.
+  // - metaColor:     id, ts, sc fields
+  // - severityColor: the sv (severity flag) field – can differ from meta
+  // - descColor:     mn + message text
+  const renderAlignedFields = (
+    fields: [string, string, string, string, string, string],
+    metaColor: string,
+    severityColor: string,
+    descColor: string,
+    bold?: boolean,
+  ): React.ReactNode => {
+    const [id, ts, sc, sv, mn, desc] = fields;
+    const mc: React.CSSProperties = { display: 'inline-block', color: metaColor };
+    
+    // Split identifier into name and number for right-aligned numbers
+    const idMatch = id.match(/^(.+?)(\(\d+\))$/);
+    const idName = idMatch ? idMatch[1] : id;
+    const idNum = idMatch ? idMatch[2] : '';
+    
+    return (
+      <>
+        <span style={{ 
+          ...mc, 
+          minWidth: PT_COL.id, 
+          display: 'inline-flex', 
+          justifyContent: 'space-between' 
+        }}>
+          <span>{idName}</span>
+          <span>{idNum}</span>
+        </span>
+        <span style={{ color: metaColor }}>,</span>{' '}
+        <span style={{ ...mc, minWidth: PT_COL.ts }}>{ts},</span>{' '}
+        <span style={{ ...mc, minWidth: PT_COL.sc }}>{sc},</span>{' '}
+        <span style={{ display: 'inline-block', color: severityColor, minWidth: PT_COL.sv }}>{sv},</span>{' '}
+        <span style={{ color: descColor, minWidth: PT_COL.mn, display: 'inline-block' }}>{mn},</span>{' '}
+        <span style={{ color: descColor, fontWeight: bold ? 700 : undefined }}>
+          {renderWithLinks(desc)}
+        </span>
+      </>
+    );
+  };
+
+  // Render one raw log line with severity-aware colours + clickable paths.
+  const renderPlainLine = (line: string, severity: LogSeverity, isFirstLine: boolean): React.ReactNode => {
+    if (severity === 'OTHER') {
+      return <span style={{ color: PT.OTHER }}>{renderWithLinks(line)}</span>;
+    }
+
+    // Aligned rendering for PVSS first lines
+    if (isFirstLine) {
+      const fields = parsePvssFields(line);
+      if (fields) {
+        const managerColor = getManagerColor(fields[0]);
+        
+        if (severity === 'INFO') {
+          return renderAlignedFields(fields, managerColor, PT.INFO_SEVERITY, PT.INFO_DESC);
+        }
+        if (severity === 'DEBUG') {
+          return renderAlignedFields(fields, managerColor, PT.DEBUG_SEVERITY, PT.DEBUG_DESC);
+        }
+        const color =
+          severity === 'FATAL'   ? PT.FATAL   :
+          severity === 'SEVERE'  ? PT.SEVERE  :
+          PT.WARNING;
+        return renderAlignedFields(fields, color, color, color, severity === 'FATAL');
+      }
+    }
+
+    // Continuation lines (anything indented) – always near-white with clickable links
+    return <span style={{ color: PT.INFO_DESC }}>{renderWithLinks(line)}</span>;
   };
 
   return (
@@ -1209,7 +1372,8 @@ function App() {
         ref={logListRef}
         style={{ 
           flex: 1, 
-          overflow: 'auto', 
+          overflowY: 'auto',
+          overflowX: 'auto',
           padding: '8px',
           backgroundColor: 'var(--vscode-editor-background)'
         }}
@@ -1231,24 +1395,25 @@ function App() {
             fontSize: '12px',
             padding: '4px 0',
           }}>
-            {filteredLogs.map((log, logIndex) =>
-              (log.rawLines?.length ? log.rawLines : [log.message]).map((line, lineIndex) => (
+            {filteredLogs.map((log, logIndex) => {
+              const lines = log.rawLines?.length ? log.rawLines : [log.message];
+              const isCritical = log.severity === 'FATAL' || log.severity === 'SEVERE';
+              return lines.map((line, lineIndex) => (
                 <div
                   key={`pt-${logIndex}-${lineIndex}`}
                   style={{
-                    padding: '0 8px',
+                    paddingLeft: '4px',
+                    paddingRight: '8px',
                     lineHeight: '1.6',
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-all',
-                    color: lineIndex === 0
-                      ? getSeverityColor(log.severity)
-                      : 'var(--vscode-editor-foreground)',
+                    whiteSpace: 'pre',
+                    marginTop: isCritical && lineIndex === 0 ? '1px' : undefined,
+                    marginBottom: isCritical && lineIndex === lines.length - 1 ? '1px' : undefined,
                   }}
                 >
-                  {renderPlainLine(line)}
+                  {renderPlainLine(line, log.severity, lineIndex === 0)}
                 </div>
-              ))
-            )}
+              ));
+            })}
           </div>
         ) : filteredLogs.map((log, index) => {
           const fileRef = getFileFromMetadata(log);

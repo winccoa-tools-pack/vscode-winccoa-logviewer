@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-03-01
+
+### Added
+
+- **🎨 Unified Color Palette**: Complete redesign of color system across all UI elements
+  - Plain text mode, filter buttons, and level column now share consistent color scheme
+  - Manager-specific prefix coloring (WCCOActrl = lavender, WCCILevent = mauve, WCCILdataSQLite = blue, etc.)
+  - Three-part coloring for INFO/DEBUG levels (prefix/severity-flag/description)
+  - Severity colors: INFO (green), DEBUG (blue), WARNING (gold), SEVERE (red), FATAL (bright red), OTHER (rosé-gold)
+  - Clickable file paths in VS Code blue (#569cd6)
+
+- **☀️ Light/Dark Theme Support**: Automatic theme detection with dual color palettes
+  - MutationObserver watches VS Code theme changes in real-time
+  - Light theme uses darker colors for readability on white background
+  - Dark theme uses vibrant colors optimized for dark background
+  - Seamless switching when user changes VS Code theme
+
+- **📐 Perfect Column Alignment**: Enhanced plain text mode layout
+  - Manager identifiers with right-aligned numbers (WCCOActrl      (6))
+  - Fixed-width columns ensure vertical alignment across all log entries
+  - Names left-aligned, numbers right-aligned within 21ch column width
+  - Flex-based layout for pixel-perfect positioning
+
+- **↔️ Horizontal Scrolling**: Terminal-like behavior for long log lines
+  - Lines no longer wrap – scroll horizontally to see full content
+  - `whiteSpace: 'pre'` preserves exact formatting
+  - Single scroll container for smooth bidirectional scrolling
+  - No nested scroll conflicts – seamless mouse wheel transitions
+
+### Changed
+
+- **Plain Text Mode Enhancements**:
+  - Line height increased to 1.6 for better readability
+  - Small left padding (4px) for breathing room
+  - FATAL/SEVERE entries get subtle vertical spacing for visual separation
+  - Continuation lines (Stacktrace, Script, Line) always in near-white/near-black with clickable links
+  - `at <path>:<line>` patterns in stacktraces now recognized and made clickable
+
+### Fixed
+
+- Scroll performance: Removed nested scroll containers causing sluggish transitions
+- Manager number alignment: Numbers now perfectly aligned vertically
+- Theme inconsistency: All UI elements now respect current VS Code theme
+
+### Known Issues
+
+- **Relative Paths in Stacktraces**: File paths in stacktrace continuation lines (e.g., `classes\oaTest\OaTestBase.ctl:1025`) are relative and cannot be opened directly. VS Code requires absolute paths. This will be fixed in the next update by resolving relative paths against the WinCC OA project directory.
+
 ## [2.2.1] - 2026-03-01
 
 ### Added
