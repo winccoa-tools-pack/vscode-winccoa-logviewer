@@ -792,48 +792,8 @@ function App() {
       }
     }
 
-    // Continuation lines – render tags in severity color, content in near-white
-    const tagColor =
-      severity === 'FATAL'   ? PT.FATAL   :
-      severity === 'SEVERE'  ? PT.SEVERE  :
-      severity === 'WARNING' ? PT.WARNING :
-      severity === 'DEBUG'   ? PT.DEBUG_DESC :
-      PT.PREFIX; // INFO tags in prefix color
-
-    // Pattern 1: Tag keywords (Note:, StackTrace:, Script:, Line:, etc.)
-    const tagMatch = line.match(/^(\s*)(Note|StackTrace|Script|Line|Aborted|Failed|Passed|KnownBugs|Skipped|Instable|Checks done):(\s*)(.*)/);
-    if (tagMatch) {
-      const [, leadingWs, tag, trailingWs, rest] = tagMatch;
-      return (
-        <>
-          <span style={{ color: tagColor, fontWeight: severity === 'FATAL' ? 700 : undefined }}>
-            {leadingWs}{tag}:
-          </span>
-          <span style={{ color: PT.INFO_DESC }}>{trailingWs}{renderWithLinks(rest)}</span>
-        </>
-      );
-    }
-
-    // Pattern 2: Stack frame (signature + "at" + location)
-    const stackFrameMatch = line.match(/^(\s+)(.+?)(\s+at\s+)(.*)$/);
-    if (stackFrameMatch) {
-      const [, leadingWs, signature, atKeyword, location] = stackFrameMatch;
-      return (
-        <>
-          <span style={{ color: tagColor, fontWeight: severity === 'FATAL' ? 700 : undefined }}>
-            {leadingWs}{signature}{atKeyword}
-          </span>
-          <span style={{ color: PT.INFO_DESC }}>{renderWithLinks(location)}</span>
-        </>
-      );
-    }
-
-    // Fallback: whole line in tag color (rare, for unrecognized patterns)
-    return (
-      <span style={{ color: tagColor, fontWeight: severity === 'FATAL' ? 700 : undefined }}>
-        {renderWithLinks(line)}
-      </span>
-    );
+    // Continuation lines (anything indented) – always near-white with clickable links
+    return <span style={{ color: PT.INFO_DESC }}>{renderWithLinks(line)}</span>;
   };
 
   return (
