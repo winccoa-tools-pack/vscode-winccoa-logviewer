@@ -686,7 +686,7 @@ function App() {
         {before}
         <span
           style={{
-            color: 'var(--vscode-textLink-foreground)',
+            color: 'var(--color-string)',
             cursor: 'pointer',
             textDecoration: 'underline',
           }}
