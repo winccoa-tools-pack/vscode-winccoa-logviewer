@@ -246,7 +246,7 @@
     "@vscode/vsce": "^3.7.1",
     "eslint": "^8.57.1",
     "glob": "^13.0.0",
-    "markdownlint-cli": "^0.47.0",
+    "markdownlint-cli": "^0.48.0",
     "mocha": "^11.3.0",
     "prettier": "^3.7.4",
     "typescript": "^5.2.0"
