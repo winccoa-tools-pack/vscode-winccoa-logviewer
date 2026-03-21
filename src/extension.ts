@@ -39,15 +39,12 @@ export function activate(context: vscode.ExtensionContext) {
     const maxEvents = config.get<number>('background.maxEvents', 500);
     const logPathSource = config.get<string>('logPathSource', 'workspace');
     const logLevel = config.get<string>('logLevel', 'INFO');
-    
+
     ExtensionOutputChannel.info(
         'Extension',
         `⚙️ Background logging: ${backgroundEnabled ? '✅ enabled' : '❌ disabled'}`,
     );
-    ExtensionOutputChannel.info(
-        'Extension',
-        `🔄 Ringbuffer size: ${maxEvents} events`,
-    );
+    ExtensionOutputChannel.info('Extension', `🔄 Ringbuffer size: ${maxEvents} events`);
     ExtensionOutputChannel.debug('Configuration', `Log Path Source: ${logPathSource}`);
     ExtensionOutputChannel.debug('Configuration', `Log Level: ${logLevel}`);
 
@@ -66,18 +63,31 @@ export function activate(context: vscode.ExtensionContext) {
     // Initialize Background Service (Singleton)
     ExtensionOutputChannel.trace('Extension', 'Initializing Background Service...');
     backgroundService = LogBackgroundService.getInstance();
-    
+
     // Auto-start background watcher if log path available
     const initialLogPath = PathResolver.getLogPath();
     if (initialLogPath) {
-        ExtensionOutputChannel.debug('Extension', `Auto-starting background service with: ${initialLogPath}`);
-        backgroundService.start(initialLogPath).then(() => {
-            ExtensionOutputChannel.info('Services', '✅ Background log watcher started');
-        }).catch((error) => {
-            ExtensionOutputChannel.error('Services', 'Failed to start background watcher', error as Error);
-        });
+        ExtensionOutputChannel.debug(
+            'Extension',
+            `Auto-starting background service with: ${initialLogPath}`,
+        );
+        backgroundService
+            .start(initialLogPath)
+            .then(() => {
+                ExtensionOutputChannel.info('Services', '✅ Background log watcher started');
+            })
+            .catch((error) => {
+                ExtensionOutputChannel.error(
+                    'Services',
+                    'Failed to start background watcher',
+                    error as Error,
+                );
+            });
     } else {
-        ExtensionOutputChannel.debug('Extension', 'No log path available - background service will start when path is set');
+        ExtensionOutputChannel.debug(
+            'Extension',
+            'No log path available - background service will start when path is set',
+        );
     }
 
     // Initialize Language Model Tools Service (GitHub Copilot integration)
@@ -85,7 +95,10 @@ export function activate(context: vscode.ExtensionContext) {
     ExtensionOutputChannel.trace('Extension', 'Initializing Language Model Tools Service...');
     languageModelTools = new LanguageModelToolsService(backgroundService);
     languageModelTools.register(context);
-    ExtensionOutputChannel.info('Services', 'Language Model Tools Service initialized (4 tools registered)');
+    ExtensionOutputChannel.info(
+        'Services',
+        'Language Model Tools Service initialized (4 tools registered)',
+    );
 
     // Setup Core extension integration if in automatic mode
     setupCoreExtensionIntegration();
@@ -102,7 +115,10 @@ export function activate(context: vscode.ExtensionContext) {
                 e.affectsConfiguration('winccoaLogviewer.background.enabled') ||
                 e.affectsConfiguration('winccoaLogviewer.background.maxEvents')
             ) {
-                ExtensionOutputChannel.info('Configuration', 'Background service configuration changed');
+                ExtensionOutputChannel.info(
+                    'Configuration',
+                    'Background service configuration changed',
+                );
                 backgroundService.updateConfiguration();
             }
 
@@ -124,7 +140,11 @@ export function activate(context: vscode.ExtensionContext) {
                         `Restarting background service with new log path: ${newPath}`,
                     );
                     backgroundService.restart(newPath).catch((error) => {
-                        ExtensionOutputChannel.error('Configuration', 'Failed to restart background service', error as Error);
+                        ExtensionOutputChannel.error(
+                            'Configuration',
+                            'Failed to restart background service',
+                            error as Error,
+                        );
                     });
                 }
 
@@ -166,28 +186,28 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(openLogViewerCommand);
 
     // Register the command to clear logs (called by Script Actions before execution)
-    const clearLogsCommand = vscode.commands.registerCommand(
-        'winccoa-logviewer.clearLogs',
-        () => {
-            const config = vscode.workspace.getConfiguration('winccoaLogviewer');
-            const autoClear = config.get<boolean>('autoClearOnScriptExecution', false);
+    const clearLogsCommand = vscode.commands.registerCommand('winccoa-logviewer.clearLogs', () => {
+        const config = vscode.workspace.getConfiguration('winccoaLogviewer');
+        const autoClear = config.get<boolean>('autoClearOnScriptExecution', false);
 
-            if (!autoClear) {
-                ExtensionOutputChannel.debug('Command', 'Auto-clear disabled - ignoring clearLogs command');
-                return;
-            }
+        if (!autoClear) {
+            ExtensionOutputChannel.debug(
+                'Command',
+                'Auto-clear disabled - ignoring clearLogs command',
+            );
+            return;
+        }
 
-            ExtensionOutputChannel.info('Command', 'Clearing logs (triggered by Script Actions)');
+        ExtensionOutputChannel.info('Command', 'Clearing logs (triggered by Script Actions)');
 
-            // Clear background service buffer
-            backgroundService.clearEvents();
+        // Clear background service buffer
+        backgroundService.clearEvents();
 
-            // Clear active panel if open
-            if (LogViewerPanel.currentPanel) {
-                LogViewerPanel.currentPanel.clearLogs();
-            }
-        },
-    );
+        // Clear active panel if open
+        if (LogViewerPanel.currentPanel) {
+            LogViewerPanel.currentPanel.clearLogs();
+        }
+    });
 
     context.subscriptions.push(clearLogsCommand);
 
@@ -250,10 +270,7 @@ async function setupCoreExtensionIntegration() {
         'CoreIntegration',
         '═══════════════════════════════════════════════════════',
     );
-    ExtensionOutputChannel.info(
-        'CoreIntegration',
-        '🔍 Checking for active WinCC OA project...',
-    );
+    ExtensionOutputChannel.info('CoreIntegration', '🔍 Checking for active WinCC OA project...');
 
     // Subscribe to project changes
     coreApi.onDidChangeProject((project: unknown) => {
@@ -266,7 +283,7 @@ async function setupCoreExtensionIntegration() {
             const proj = project as { projectDir: string; name: string };
             const projectDir = proj.projectDir.replace(/[/]+$/, ''); // Remove trailing slashes
             const logPath = `${projectDir}/log`;
-            
+
             ExtensionOutputChannel.info(
                 'CoreIntegration',
                 '═══════════════════════════════════════════════════════',
@@ -275,37 +292,50 @@ async function setupCoreExtensionIntegration() {
                 'CoreIntegration',
                 `🔄 WinCC OA Project Changed: ${proj.name}`,
             );
-            ExtensionOutputChannel.info(
-                'CoreIntegration',
-                `📂 Project directory: ${projectDir}`,
-            );
-            ExtensionOutputChannel.info(
-                'CoreIntegration',
-                `📁 Log folder: ${logPath}`,
-            );
+            ExtensionOutputChannel.info('CoreIntegration', `📂 Project directory: ${projectDir}`);
+            ExtensionOutputChannel.info('CoreIntegration', `📁 Log folder: ${logPath}`);
 
             // Validate path before updating panel
             if (!PathResolver.validatePath(logPath)) {
-                ExtensionOutputChannel.error('CoreIntegration', `❌ Log folder not found: ${logPath}`);
-                ExtensionOutputChannel.warn('CoreIntegration', '⚠️ Background log monitoring will not work until log folder exists');
+                ExtensionOutputChannel.error(
+                    'CoreIntegration',
+                    `❌ Log folder not found: ${logPath}`,
+                );
+                ExtensionOutputChannel.warn(
+                    'CoreIntegration',
+                    '⚠️ Background log monitoring will not work until log folder exists',
+                );
                 ExtensionOutputChannel.info(
                     'CoreIntegration',
                     '═══════════════════════════════════════════════════════',
                 );
                 return;
             }
-            
-            ExtensionOutputChannel.info('CoreIntegration', `✅ Log folder exists and is accessible`);
+
+            ExtensionOutputChannel.info(
+                'CoreIntegration',
+                `✅ Log folder exists and is accessible`,
+            );
 
             // Only restart if path actually changed (prevent restart on first event)
             const currentConfig = backgroundService.getConfiguration();
             if (currentConfig.currentPath !== logPath) {
-                ExtensionOutputChannel.debug('CoreIntegration', `Restarting background service for new project (${currentConfig.currentPath} → ${logPath})`);
+                ExtensionOutputChannel.debug(
+                    'CoreIntegration',
+                    `Restarting background service for new project (${currentConfig.currentPath} → ${logPath})`,
+                );
                 backgroundService.restart(logPath).catch((error) => {
-                    ExtensionOutputChannel.error('CoreIntegration', 'Failed to restart background service', error as Error);
+                    ExtensionOutputChannel.error(
+                        'CoreIntegration',
+                        'Failed to restart background service',
+                        error as Error,
+                    );
                 });
             } else {
-                ExtensionOutputChannel.debug('CoreIntegration', `Path unchanged (${logPath}) - no restart needed`);
+                ExtensionOutputChannel.debug(
+                    'CoreIntegration',
+                    `Path unchanged (${logPath}) - no restart needed`,
+                );
             }
 
             // If panel is open, update it with new log path
@@ -329,14 +359,8 @@ async function setupCoreExtensionIntegration() {
             'CoreIntegration',
             `🎯 Active WinCC OA Project: ${currentProject.name}`,
         );
-        ExtensionOutputChannel.info(
-            'CoreIntegration',
-            `📂 Project directory: ${projectDir}`,
-        );
-        ExtensionOutputChannel.info(
-            'CoreIntegration',
-            `📁 Expected log folder: ${logPath}`,
-        );
+        ExtensionOutputChannel.info('CoreIntegration', `📂 Project directory: ${projectDir}`);
+        ExtensionOutputChannel.info('CoreIntegration', `📁 Expected log folder: ${logPath}`);
 
         if (!PathResolver.validatePath(logPath)) {
             ExtensionOutputChannel.error(
@@ -355,13 +379,16 @@ async function setupCoreExtensionIntegration() {
         }
     } else {
         ExtensionOutputChannel.warn('CoreIntegration', '⚠️ No WinCC OA project currently selected');
-        ExtensionOutputChannel.info('CoreIntegration', 'Please select a project in WinCC OA Project Admin to enable log monitoring');
+        ExtensionOutputChannel.info(
+            'CoreIntegration',
+            'Please select a project in WinCC OA Project Admin to enable log monitoring',
+        );
     }
 }
 
 export function deactivate() {
     ExtensionOutputChannel.info('Extension', 'WinCC OA LogViewer Extension deactivated');
-    
+
     // Dispose background service
     if (backgroundService) {
         backgroundService.dispose();

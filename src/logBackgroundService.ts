@@ -88,15 +88,12 @@ export class LogBackgroundService {
                 'BackgroundService',
                 `✅ Background watcher started successfully`,
             );
-            ExtensionOutputChannel.info(
-                'BackgroundService',
-                `📁 Log folder: ${logPath}`,
-            );
+            ExtensionOutputChannel.info('BackgroundService', `📁 Log folder: ${logPath}`);
             ExtensionOutputChannel.info(
                 'BackgroundService',
                 `📄 Found ${availableFiles.length} log file(s): ${availableFiles.slice(0, 5).join(', ')}${availableFiles.length > 5 ? ` (and ${availableFiles.length - 5} more)` : ''}`,
             );
-            
+
             if (availableFiles.length === 0) {
                 ExtensionOutputChannel.warn(
                     'BackgroundService',
@@ -114,11 +111,7 @@ export class LogBackgroundService {
             setTimeout(() => {
                 ExtensionOutputChannel.info('BackgroundService', 'Retrying watcher start...');
                 this.start(logPath).catch((err) => {
-                    ExtensionOutputChannel.error(
-                        'BackgroundService',
-                        'Retry failed',
-                        err as Error,
-                    );
+                    ExtensionOutputChannel.error('BackgroundService', 'Retry failed', err as Error);
                 });
             }, 5000);
 
@@ -335,15 +328,25 @@ export class LogBackgroundService {
 
         // If disabled → stop watcher
         if (!this.isEnabled && oldEnabled) {
-            ExtensionOutputChannel.info('BackgroundService', 'Background logging disabled - stopping watcher');
+            ExtensionOutputChannel.info(
+                'BackgroundService',
+                'Background logging disabled - stopping watcher',
+            );
             this.stop();
         }
 
         // If enabled → start watcher (if path available)
         if (this.isEnabled && !oldEnabled && this.currentLogPath) {
-            ExtensionOutputChannel.info('BackgroundService', 'Background logging enabled - starting watcher');
+            ExtensionOutputChannel.info(
+                'BackgroundService',
+                'Background logging enabled - starting watcher',
+            );
             this.start(this.currentLogPath).catch((err) => {
-                ExtensionOutputChannel.error('BackgroundService', 'Failed to start watcher', err as Error);
+                ExtensionOutputChannel.error(
+                    'BackgroundService',
+                    'Failed to start watcher',
+                    err as Error,
+                );
             });
         }
 

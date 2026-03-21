@@ -53,55 +53,43 @@ export class LogFileWatcher {
     public setWatchedFiles(fileNames: string[]): void {
         const previousWatched = Array.from(this.watchedFiles);
         const newWatched = fileNames;
-        
+
         // Calculate changes
-        const added = newWatched.filter(f => !previousWatched.includes(f));
-        const removed = previousWatched.filter(f => !newWatched.includes(f));
-        const unchanged = newWatched.filter(f => previousWatched.includes(f));
-        
+        const added = newWatched.filter((f) => !previousWatched.includes(f));
+        const removed = previousWatched.filter((f) => !newWatched.includes(f));
+        const unchanged = newWatched.filter((f) => previousWatched.includes(f));
+
         this.watchedFiles = new Set(fileNames);
-        
+
         ExtensionOutputChannel.info(
             'LogFileWatcher',
             '═══════════════════════════════════════════════════════',
         );
-        ExtensionOutputChannel.info(
-            'LogFileWatcher',
-            `📊 File Selection Updated:`,
-        );
+        ExtensionOutputChannel.info('LogFileWatcher', `📊 File Selection Updated:`);
         ExtensionOutputChannel.info(
             'LogFileWatcher',
             `   ✅ Watching: ${newWatched.length} file(s)`,
         );
-        
+
         if (added.length > 0) {
-            ExtensionOutputChannel.info(
-                'LogFileWatcher',
-                `   ➕ Added: ${added.join(', ')}`,
-            );
+            ExtensionOutputChannel.info('LogFileWatcher', `   ➕ Added: ${added.join(', ')}`);
         }
-        
+
         if (removed.length > 0) {
-            ExtensionOutputChannel.info(
-                'LogFileWatcher',
-                `   ➖ Removed: ${removed.join(', ')}`,
-            );
+            ExtensionOutputChannel.info('LogFileWatcher', `   ➖ Removed: ${removed.join(', ')}`);
         }
-        
+
         if (unchanged.length > 0) {
             ExtensionOutputChannel.debug(
                 'LogFileWatcher',
                 `   🔄 Unchanged: ${unchanged.join(', ')}`,
             );
         }
-        
+
         // List all available files with their status
         const allFiles = this.getAvailableLogFiles();
-        ExtensionOutputChannel.info(
-            'LogFileWatcher',
-            `   📄 Available files: ${allFiles.length}`,
-        );
-        
+        ExtensionOutputChannel.info('LogFileWatcher', `   📄 Available files: ${allFiles.length}`);
+
         for (const file of allFiles) {
             const isWatched = this.watchedFiles.has(file);
             ExtensionOutputChannel.info(
@@ -109,7 +97,7 @@ export class LogFileWatcher {
                 `      ${isWatched ? '👁️  WATCHING' : '⏸️  IGNORED '} - ${file}`,
             );
         }
-        
+
         ExtensionOutputChannel.info(
             'LogFileWatcher',
             '═══════════════════════════════════════════════════════',
