@@ -197,9 +197,12 @@ export class LogViewerPanel {
     private _sendHistoryFiles(): void {
         const backgroundService = getBackgroundService();
         const watcher = backgroundService.getWatcher();
-        
+
         if (!watcher) {
-            ExtensionOutputChannel.warn('LogViewerPanel', 'Cannot get history files: no watcher in background service');
+            ExtensionOutputChannel.warn(
+                'LogViewerPanel',
+                'Cannot get history files: no watcher in background service',
+            );
             return;
         }
 
@@ -226,9 +229,12 @@ export class LogViewerPanel {
     ): Promise<void> {
         const backgroundService = getBackgroundService();
         const watcher = backgroundService.getWatcher();
-        
+
         if (!watcher) {
-            ExtensionOutputChannel.warn('LogViewerPanel', 'Cannot load history: no watcher in background service');
+            ExtensionOutputChannel.warn(
+                'LogViewerPanel',
+                'Cannot load history: no watcher in background service',
+            );
             return;
         }
 
@@ -278,15 +284,18 @@ export class LogViewerPanel {
             'LogViewerPanel',
             `Received file selection from UI: ${files.length} file(s) - ${files.join(', ')}`,
         );
-        
+
         const backgroundService = getBackgroundService();
         const watcher = backgroundService.getWatcher();
-        
+
         if (!watcher) {
-            ExtensionOutputChannel.warn('LogViewerPanel', 'Cannot set watched files: no watcher in background service');
+            ExtensionOutputChannel.warn(
+                'LogViewerPanel',
+                'Cannot set watched files: no watcher in background service',
+            );
             return;
         }
-        
+
         watcher.setWatchedFiles(files);
     }
 
@@ -297,9 +306,16 @@ export class LogViewerPanel {
         try {
             const config = vscode.workspace.getConfiguration('winccoaLogviewer');
             await config.update(key, value, vscode.ConfigurationTarget.Workspace);
-            ExtensionOutputChannel.debug('LogViewerPanel', `Configuration updated: ${key} = ${value}`);
+            ExtensionOutputChannel.debug(
+                'LogViewerPanel',
+                `Configuration updated: ${key} = ${value}`,
+            );
         } catch (error) {
-            ExtensionOutputChannel.error('LogViewerPanel', `Failed to update configuration: ${key}`, error as Error);
+            ExtensionOutputChannel.error(
+                'LogViewerPanel',
+                `Failed to update configuration: ${key}`,
+                error as Error,
+            );
         }
     }
 
@@ -309,7 +325,7 @@ export class LogViewerPanel {
     public setPaused(paused: boolean): void {
         const backgroundService = getBackgroundService();
         const watcher = backgroundService.getWatcher();
-        
+
         ExtensionOutputChannel.debug(
             'LogViewerPanel',
             `setPaused: ${paused}, hasWatcher: ${!!watcher}`,
@@ -336,7 +352,7 @@ export class LogViewerPanel {
 
     /**
      * Start watching log directory
-     * 
+     *
      * v2.1.0: Panel is now a consumer of BackgroundService.
      * Subscribes to new events instead of owning the watcher.
      */
@@ -361,7 +377,7 @@ export class LogViewerPanel {
 
         try {
             const backgroundService = getBackgroundService();
-            
+
             // Subscribe to background service events
             this._eventSubscription = backgroundService.onNewEvent((event: LogEvent) => {
                 // Send event to webview

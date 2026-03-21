@@ -1,9 +1,9 @@
 /**
  * Language Model Tools for GitHub Copilot
- * 
+ *
  * Provides WinCC OA log analysis tools for AI assistants.
  * Tools for querying, filtering, and analyzing log events.
- * 
+ *
  * v2.1.0: Uses LogBackgroundService for event access instead of own store.
  */
 
@@ -13,7 +13,7 @@ import { LogBackgroundService } from './logBackgroundService';
 
 /**
  * Language Model Tools Service
- * 
+ *
  * Registers log analysis tools for GitHub Copilot autonomous access.
  * Events are accessed from LogBackgroundService (shared with Panel).
  */
@@ -30,25 +30,37 @@ export class LanguageModelToolsService {
      */
     register(context: vscode.ExtensionContext): void {
         console.log('[LanguageModelTools] Registering WinCC OA LogViewer Tools...');
-        
+
         // Tool 1: Query Logs
         this.disposables.push(
-            vscode.lm.registerTool('logviewer_query_logs', new QueryLogsTool(this.backgroundService))
+            vscode.lm.registerTool(
+                'logviewer_query_logs',
+                new QueryLogsTool(this.backgroundService),
+            ),
         );
 
         // Tool 2: Get Recent Errors
         this.disposables.push(
-            vscode.lm.registerTool('logviewer_get_recent_errors', new GetRecentErrorsTool(this.backgroundService))
+            vscode.lm.registerTool(
+                'logviewer_get_recent_errors',
+                new GetRecentErrorsTool(this.backgroundService),
+            ),
         );
 
         // Tool 3: Search Pattern
         this.disposables.push(
-            vscode.lm.registerTool('logviewer_search_pattern', new SearchPatternTool(this.backgroundService))
+            vscode.lm.registerTool(
+                'logviewer_search_pattern',
+                new SearchPatternTool(this.backgroundService),
+            ),
         );
 
         // Tool 4: Get by Severity
         this.disposables.push(
-            vscode.lm.registerTool('logviewer_get_by_severity', new GetBySeverityTool(this.backgroundService))
+            vscode.lm.registerTool(
+                'logviewer_get_by_severity',
+                new GetBySeverityTool(this.backgroundService),
+            ),
         );
 
         // Add to context subscriptions
@@ -61,14 +73,14 @@ export class LanguageModelToolsService {
      * Dispose all registered tools
      */
     dispose(): void {
-        this.disposables.forEach(d => d.dispose());
+        this.disposables.forEach((d) => d.dispose());
         this.disposables = [];
     }
 }
 
 /**
  * Tool 1: Query Logs
- * 
+ *
  * Query log events with filters (severity, time range, search pattern).
  */
 class QueryLogsTool implements vscode.LanguageModelTool<QueryLogsInput> {
@@ -76,7 +88,7 @@ class QueryLogsTool implements vscode.LanguageModelTool<QueryLogsInput> {
 
     async invoke(
         options: vscode.LanguageModelToolInvocationOptions<QueryLogsInput>,
-        _token: vscode.CancellationToken
+        _token: vscode.CancellationToken,
     ): Promise<vscode.LanguageModelToolResult> {
         try {
             const input = options.input;
@@ -86,17 +98,20 @@ class QueryLogsTool implements vscode.LanguageModelTool<QueryLogsInput> {
 
             // Filter by severity
             if (input.severity) {
-                const severities = Array.isArray(input.severity) ? input.severity : [input.severity];
-                events = events.filter(e => severities.includes(e.severity));
+                const severities = Array.isArray(input.severity)
+                    ? input.severity
+                    : [input.severity];
+                events = events.filter((e) => severities.includes(e.severity));
             }
 
             // Filter by search pattern
             if (input.searchPattern) {
                 const pattern = input.searchPattern.toLowerCase();
-                events = events.filter(e => 
-                    e.message.toLowerCase().includes(pattern) ||
-                    e.scope.toLowerCase().includes(pattern) ||
-                    e.identifier.toLowerCase().includes(pattern)
+                events = events.filter(
+                    (e) =>
+                        e.message.toLowerCase().includes(pattern) ||
+                        e.scope.toLowerCase().includes(pattern) ||
+                        e.identifier.toLowerCase().includes(pattern),
                 );
             }
 
@@ -104,7 +119,7 @@ class QueryLogsTool implements vscode.LanguageModelTool<QueryLogsInput> {
             if (input.lastMinutes) {
                 const cutoff = new Date();
                 cutoff.setMinutes(cutoff.getMinutes() - input.lastMinutes);
-                events = events.filter(e => {
+                events = events.filter((e) => {
                     const eventTime = new Date(e.timestamp);
                     return eventTime >= cutoff;
                 });
@@ -112,36 +127,43 @@ class QueryLogsTool implements vscode.LanguageModelTool<QueryLogsInput> {
 
             // Limit results
             const limit = input.limit || 100;
-            const results = events.slice(-limit).map(e => ({
+            const results = events.slice(-limit).map((e) => ({
                 timestamp: e.timestamp,
                 severity: e.severity,
                 identifier: e.identifier,
                 scope: e.scope,
                 message: e.message,
                 sourceFile: e.sourceFile,
-                metadata: e.metadata
+                metadata: e.metadata,
             }));
 
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(
-                    JSON.stringify({
-                        success: true,
-                        count: results.length,
-                        totalEvents: events.length,
-                        events: results
-                    }, null, 2)
-                )
+                    JSON.stringify(
+                        {
+                            success: true,
+                            count: results.length,
+                            totalEvents: events.length,
+                            events: results,
+                        },
+                        null,
+                        2,
+                    ),
+                ),
             ]);
-
         } catch (error: unknown) {
             console.error('[QueryLogsTool] Error:', error);
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(
-                    JSON.stringify({
-                        success: false,
-                        error: (error as Error).message
-                    }, null, 2)
-                )
+                    JSON.stringify(
+                        {
+                            success: false,
+                            error: (error as Error).message,
+                        },
+                        null,
+                        2,
+                    ),
+                ),
             ]);
         }
     }
@@ -156,15 +178,15 @@ interface QueryLogsInput {
 
 /**
  * Tool 2: Get Recent Errors
- * 
+ *
  * Get the last N error/warning events.
  */
 class GetRecentErrorsTool implements vscode.LanguageModelTool<GetRecentErrorsInput> {
     constructor(private backgroundService: LogBackgroundService) {}
-    
+
     async invoke(
         options: vscode.LanguageModelToolInvocationOptions<GetRecentErrorsInput>,
-        _token: vscode.CancellationToken
+        _token: vscode.CancellationToken,
     ): Promise<vscode.LanguageModelToolResult> {
         try {
             const input = options.input;
@@ -173,35 +195,42 @@ class GetRecentErrorsTool implements vscode.LanguageModelTool<GetRecentErrorsInp
 
             const errors = this.backgroundService.getRecentErrors(limit);
 
-            const results = errors.map(e => ({
+            const results = errors.map((e) => ({
                 timestamp: e.timestamp,
                 severity: e.severity,
                 identifier: e.identifier,
                 scope: e.scope,
                 message: e.message,
                 sourceFile: e.sourceFile,
-                metadata: e.metadata
+                metadata: e.metadata,
             }));
 
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(
-                    JSON.stringify({
-                        success: true,
-                        count: results.length,
-                        events: results
-                    }, null, 2)
-                )
+                    JSON.stringify(
+                        {
+                            success: true,
+                            count: results.length,
+                            events: results,
+                        },
+                        null,
+                        2,
+                    ),
+                ),
             ]);
-
         } catch (error: unknown) {
             console.error('[GetRecentErrorsTool] Error:', error);
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(
-                    JSON.stringify({
-                        success: false,
-                        error: (error as Error).message
-                    }, null, 2)
-                )
+                    JSON.stringify(
+                        {
+                            success: false,
+                            error: (error as Error).message,
+                        },
+                        null,
+                        2,
+                    ),
+                ),
             ]);
         }
     }
@@ -213,7 +242,7 @@ interface GetRecentErrorsInput {
 
 /**
  * Tool 3: Search Pattern
- * 
+ *
  * Search for a specific pattern in log messages.
  */
 class SearchPatternTool implements vscode.LanguageModelTool<SearchPatternInput> {
@@ -221,7 +250,7 @@ class SearchPatternTool implements vscode.LanguageModelTool<SearchPatternInput> 
 
     async invoke(
         options: vscode.LanguageModelToolInvocationOptions<SearchPatternInput>,
-        _token: vscode.CancellationToken
+        _token: vscode.CancellationToken,
     ): Promise<vscode.LanguageModelToolResult> {
         try {
             const input = options.input;
@@ -231,36 +260,43 @@ class SearchPatternTool implements vscode.LanguageModelTool<SearchPatternInput> 
             const matches = this.backgroundService.searchEvents(input.pattern, caseSensitive);
 
             const limit = input.limit || 50;
-            const results = matches.slice(-limit).map(e => ({
+            const results = matches.slice(-limit).map((e) => ({
                 timestamp: e.timestamp,
                 severity: e.severity,
                 identifier: e.identifier,
                 scope: e.scope,
                 message: e.message,
-                sourceFile: e.sourceFile
+                sourceFile: e.sourceFile,
             }));
 
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(
-                    JSON.stringify({
-                        success: true,
-                        pattern: input.pattern,
-                        count: results.length,
-                        totalMatches: matches.length,
-                        events: results
-                    }, null, 2)
-                )
+                    JSON.stringify(
+                        {
+                            success: true,
+                            pattern: input.pattern,
+                            count: results.length,
+                            totalMatches: matches.length,
+                            events: results,
+                        },
+                        null,
+                        2,
+                    ),
+                ),
             ]);
-
         } catch (error: unknown) {
             console.error('[SearchPatternTool] Error:', error);
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(
-                    JSON.stringify({
-                        success: false,
-                        error: (error as Error).message
-                    }, null, 2)
-                )
+                    JSON.stringify(
+                        {
+                            success: false,
+                            error: (error as Error).message,
+                        },
+                        null,
+                        2,
+                    ),
+                ),
             ]);
         }
     }
@@ -274,7 +310,7 @@ interface SearchPatternInput {
 
 /**
  * Tool 4: Get by Severity
- * 
+ *
  * Get all events for a specific severity level.
  */
 class GetBySeverityTool implements vscode.LanguageModelTool<GetBySeverityInput> {
@@ -282,47 +318,54 @@ class GetBySeverityTool implements vscode.LanguageModelTool<GetBySeverityInput> 
 
     async invoke(
         options: vscode.LanguageModelToolInvocationOptions<GetBySeverityInput>,
-        _token: vscode.CancellationToken
+        _token: vscode.CancellationToken,
     ): Promise<vscode.LanguageModelToolResult> {
         try {
             const input = options.input;
             console.log(`[GetBySeverityTool] Getting events with severity: ${input.severity}`);
 
             const events = this.backgroundService.getEvents();
-            const filtered = events.filter(e => e.severity === input.severity);
+            const filtered = events.filter((e) => e.severity === input.severity);
 
             const limit = input.limit || 100;
-            const results = filtered.slice(-limit).map(e => ({
+            const results = filtered.slice(-limit).map((e) => ({
                 timestamp: e.timestamp,
                 severity: e.severity,
                 identifier: e.identifier,
                 scope: e.scope,
                 message: e.message,
                 sourceFile: e.sourceFile,
-                metadata: e.metadata
+                metadata: e.metadata,
             }));
 
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(
-                    JSON.stringify({
-                        success: true,
-                        severity: input.severity,
-                        count: results.length,
-                        totalEvents: filtered.length,
-                        events: results
-                    }, null, 2)
-                )
+                    JSON.stringify(
+                        {
+                            success: true,
+                            severity: input.severity,
+                            count: results.length,
+                            totalEvents: filtered.length,
+                            events: results,
+                        },
+                        null,
+                        2,
+                    ),
+                ),
             ]);
-
         } catch (error: unknown) {
             console.error('[GetBySeverityTool] Error:', error);
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(
-                    JSON.stringify({
-                        success: false,
-                        error: (error as Error).message
-                    }, null, 2)
-                )
+                    JSON.stringify(
+                        {
+                            success: false,
+                            error: (error as Error).message,
+                        },
+                        null,
+                        2,
+                    ),
+                ),
             ]);
         }
     }
