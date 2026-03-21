@@ -8,7 +8,7 @@
  */
 
 import * as vscode from 'vscode';
-import { LogEvent, LogSeverity } from './logEvent';
+import { LogSeverity } from './logEvent';
 import { LogBackgroundService } from './logBackgroundService';
 
 /**
@@ -133,13 +133,13 @@ class QueryLogsTool implements vscode.LanguageModelTool<QueryLogsInput> {
                 )
             ]);
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[QueryLogsTool] Error:', error);
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(
                     JSON.stringify({
                         success: false,
-                        error: error.message
+                        error: (error as Error).message
                     }, null, 2)
                 )
             ]);
@@ -193,13 +193,13 @@ class GetRecentErrorsTool implements vscode.LanguageModelTool<GetRecentErrorsInp
                 )
             ]);
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[GetRecentErrorsTool] Error:', error);
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(
                     JSON.stringify({
                         success: false,
-                        error: error.message
+                        error: (error as Error).message
                     }, null, 2)
                 )
             ]);
@@ -252,13 +252,13 @@ class SearchPatternTool implements vscode.LanguageModelTool<SearchPatternInput> 
                 )
             ]);
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[SearchPatternTool] Error:', error);
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(
                     JSON.stringify({
                         success: false,
-                        error: error.message
+                        error: (error as Error).message
                     }, null, 2)
                 )
             ]);
@@ -314,13 +314,13 @@ class GetBySeverityTool implements vscode.LanguageModelTool<GetBySeverityInput> 
                 )
             ]);
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('[GetBySeverityTool] Error:', error);
             return new vscode.LanguageModelToolResult([
                 new vscode.LanguageModelTextPart(
                     JSON.stringify({
                         success: false,
-                        error: error.message
+                        error: (error as Error).message
                     }, null, 2)
                 )
             ]);
