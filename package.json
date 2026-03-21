@@ -3,7 +3,7 @@
   "displayName": "WinCC OA LogViewer",
   "description": "LogViewer for WinCC OA - View and analyze log files in real-time",
   "publisher": "RichardJanisch",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "author": "RichardJanisch",
   "license": "MIT",
   "icon": "resources/wincc_oa_logviewer_512.png",
@@ -30,6 +30,11 @@
       {
         "command": "winccoa-logviewer.open",
         "title": "Open WinCC OA LogViewer",
+        "category": "WinCC OA"
+      },
+      {
+        "command": "winccoa-logviewer.clearLogs",
+        "title": "Clear Logs (if auto-clear enabled)",
         "category": "WinCC OA"
       }
     ],
@@ -212,6 +217,11 @@
           "minimum": 100,
           "maximum": 5000,
           "description": "Maximum number of log events to keep in background buffer (ringbuffer)"
+        },
+        "winccoaLogviewer.autoClearOnScriptExecution": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically clear logs when a WinCC OA script is executed via Script Actions extension"
         }
       }
     }

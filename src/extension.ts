@@ -165,6 +165,32 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(openLogViewerCommand);
 
+    // Register the command to clear logs (called by Script Actions before execution)
+    const clearLogsCommand = vscode.commands.registerCommand(
+        'winccoa-logviewer.clearLogs',
+        () => {
+            const config = vscode.workspace.getConfiguration('winccoaLogviewer');
+            const autoClear = config.get<boolean>('autoClearOnScriptExecution', false);
+
+            if (!autoClear) {
+                ExtensionOutputChannel.debug('Command', 'Auto-clear disabled - ignoring clearLogs command');
+                return;
+            }
+
+            ExtensionOutputChannel.info('Command', 'Clearing logs (triggered by Script Actions)');
+
+            // Clear background service buffer
+            backgroundService.clearEvents();
+
+            // Clear active panel if open
+            if (LogViewerPanel.currentPanel) {
+                LogViewerPanel.currentPanel.clearLogs();
+            }
+        },
+    );
+
+    context.subscriptions.push(clearLogsCommand);
+
     // Note: Logger disposal is handled by output channel subscription
 }
 

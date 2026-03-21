@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-03-21
+
+### ✨ Added
+
+- **Auto-Clear on Script Execution**: New quick-toggle button (🗑) in the toolbar
+  - Integrates with WinCC OA Script Actions extension
+  - When active, clears all logs automatically before each script run
+  - Tooltip indicates whether Script Actions extension is required
+  - Persisted across sessions via workspace settings (`winccoaLogviewer.autoClearOnScriptExecution`)
+  - New VS Code command: `winccoa-logviewer.clearLogs`
+
+### 🔄 Changed
+
+- **Default log order**: Newest logs now appear at the **bottom** (chronological order) by default instead of top
+- **Toolbar layout**: History button moved to the settings (⚙️) dropdown menu as "Load History..."
+- **Settings dropdown**: Removed "Open Settings" link (available via VS Code settings directly)
+  
+
 ## [2.3.0] - 2026-03-01
 
 ### Added

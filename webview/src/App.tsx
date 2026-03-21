@@ -59,6 +59,7 @@ interface ColumnWidths {
 interface PersistedState {
   newestFirst: boolean;
   autoExpandAll: boolean;
+  autoClearOnScriptExecution?: boolean;
   selectedLogFiles: string[];
   severityFilter: LogSeverity[];
   columnVisibility: ColumnVisibility;
@@ -75,8 +76,9 @@ interface PersistedState {
 
 // Default values for persisted state
 const defaultPersistedState: PersistedState = {
-  newestFirst: true,
+  newestFirst: false,
   autoExpandAll: false,
+  autoClearOnScriptExecution: false,
   plainTextMode: true,
   selectedLogFiles: [],
   severityFilter: ['DEBUG', 'INFO', 'WARNING', 'FATAL', 'SEVERE', 'OTHER'],
@@ -130,6 +132,7 @@ function App() {
   const [logFileSearch, setLogFileSearch] = useState('');
   const [newestFirst, setNewestFirst] = useState(initialState.newestFirst);
   const [autoExpandAll, setAutoExpandAll] = useState(initialState.autoExpandAll);
+  const [autoClearOnScriptExecution, setAutoClearOnScriptExecution] = useState(initialState.autoClearOnScriptExecution ?? false);
   const [plainTextMode, setPlainTextMode] = useState<boolean>(initialState.plainTextMode ?? false);
   const [expandedLogs, setExpandedLogs] = useState<Set<string>>(new Set()); // Track expanded logs by unique key
   const logListRef = useRef<HTMLDivElement>(null); // Ref for auto-scroll
@@ -191,16 +194,6 @@ function App() {
       vscode.postMessage({
         command: 'setPaused',
         paused: newPausedState
-      });
-    }
-  };
-
-  // Open settings
-  const handleOpenSettings = () => {
-    setShowSettingsDropdown(false);
-    if (vscode) {
-      vscode.postMessage({
-        command: 'openSettings'
       });
     }
   };
@@ -381,6 +374,7 @@ function App() {
           if (settings) {
             if (settings.newestFirst !== undefined) setNewestFirst(settings.newestFirst);
             if (settings.autoExpandAll !== undefined) setAutoExpandAll(settings.autoExpandAll);
+            if (settings.autoClearOnScriptExecution !== undefined) setAutoClearOnScriptExecution(settings.autoClearOnScriptExecution);
             if (settings.plainTextMode !== undefined) setPlainTextMode(settings.plainTextMode);
             if (settings.selectedLogFiles) {
               const restoredFiles = new Set<string>(settings.selectedLogFiles);
@@ -446,6 +440,10 @@ function App() {
             }
           }
           break;
+        case 'clearLogs':
+          // Clear all logs (triggered by Script Actions)
+          setAllLogs([]);
+          break;
       }
     };
 
@@ -462,6 +460,7 @@ function App() {
       const settings = {
         newestFirst,
         autoExpandAll,
+        autoClearOnScriptExecution,
         plainTextMode,
         selectedLogFiles: Array.from(selectedLogFiles),
         severityFilter: Array.from(severityFilter),
@@ -482,7 +481,7 @@ function App() {
         files: Array.from(selectedLogFiles) 
       });
     }
-  }, [newestFirst, autoExpandAll, plainTextMode, selectedLogFiles, severityFilter, columnVisibility, columnWidths, selectedHistoryFile, startDate, startTime, endDate, endTime, vscode]);
+  }, [newestFirst, autoExpandAll, autoClearOnScriptExecution, plainTextMode, selectedLogFiles, severityFilter, columnVisibility, columnWidths, selectedHistoryFile, startDate, startTime, endDate, endTime, vscode]);
 
   // Simuliere neue Logs alle 3 Sekunden (nur im Dev-Mode wenn pausiert ist false)
   useEffect(() => {
@@ -954,18 +953,6 @@ function App() {
             Clear
           {/* @ts-ignore */}
           </vscode-button>
-          
-          {/* History Button */}
-          {/* @ts-ignore */}
-          <vscode-button 
-            onClick={handleOpenHistoryModal}
-            appearance="secondary"
-            style={{ minWidth: '60px', height: '26px' }}
-            title="Load History"
-          >
-            History
-          {/* @ts-ignore */}
-          </vscode-button>
 
           {/* Plain Text Toggle */}
           {/* @ts-ignore */}
@@ -988,6 +975,34 @@ function App() {
             <span style={{ fontSize: '12px', display: 'inline-block', marginTop: '-2px' }}>
               {isPaused ? '▶' : '⏸'}
             </span>
+          {/* @ts-ignore */}
+          </vscode-button>
+
+          {/* Auto-Clear on Script Execution Quick-Toggle */}
+          {/* @ts-ignore */}
+          <vscode-button
+            onClick={() => {
+              const newValue = !autoClearOnScriptExecution;
+              setAutoClearOnScriptExecution(newValue);
+              if (vscode) {
+                vscode.postMessage({ command: 'updateConfig', key: 'autoClearOnScriptExecution', value: newValue });
+              }
+            }}
+            appearance="icon"
+            style={{
+              height: '26px',
+              minWidth: '26px',
+              padding: '0',
+              color: autoClearOnScriptExecution ? '#f14c4c' : 'var(--vscode-icon-foreground)',
+            }}
+            title={autoClearOnScriptExecution
+              ? 'Auto-clear ON: Logs are cleared before each script execution (WinCC OA Script Actions)'
+              : 'Auto-clear OFF: Logs are kept on script execution (requires WinCC OA Script Actions)'}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+              <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" strokeWidth="1.5"/>
+              <rect x="5" y="5" width="6" height="6" rx="0.5"/>
+            </svg>
           {/* @ts-ignore */}
           </vscode-button>
 
@@ -1112,7 +1127,7 @@ function App() {
                     }}
                   />
                   <div
-                    onClick={handleOpenSettings}
+                    onClick={() => { setShowSettingsDropdown(false); handleOpenHistoryModal(); }}
                     style={{
                       padding: '6px 8px',
                       cursor: 'pointer',
@@ -1126,7 +1141,7 @@ function App() {
                       e.currentTarget.style.backgroundColor = 'transparent';
                     }}
                   >
-                    Open Settings
+                    Load History...
                   </div>
                   <div
                     onClick={handleOpenLogFileModal}

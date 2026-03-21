@@ -154,6 +154,13 @@ export class LogViewerPanel {
                         );
                         this._setWatchedFiles(message.files);
                         return;
+                    case 'updateConfig':
+                        ExtensionOutputChannel.debug(
+                            'LogViewerPanel',
+                            `Updating config: ${message.key} = ${message.value}`,
+                        );
+                        this._updateConfig(message.key, message.value);
+                        return;
                 }
             },
             null,
@@ -286,6 +293,19 @@ export class LogViewerPanel {
     }
 
     /**
+     * Update VS Code workspace configuration
+     */
+    private async _updateConfig(key: string, value: unknown): Promise<void> {
+        try {
+            const config = vscode.workspace.getConfiguration('winccoaLogviewer');
+            await config.update(key, value, vscode.ConfigurationTarget.Workspace);
+            ExtensionOutputChannel.debug('LogViewerPanel', `Configuration updated: ${key} = ${value}`);
+        } catch (error) {
+            ExtensionOutputChannel.error('LogViewerPanel', `Failed to update configuration: ${key}`, error as Error);
+        }
+    }
+
+    /**
      * Set paused state of the watcher
      */
     public setPaused(paused: boolean): void {
@@ -303,6 +323,17 @@ export class LogViewerPanel {
                 watcher.resume();
             }
         }
+    }
+
+    /**
+     * Clear all logs in the webview
+     * Called by 'winccoa-logviewer.clearLogs' command when autoClearOnScriptExecution is enabled
+     */
+    public clearLogs(): void {
+        ExtensionOutputChannel.debug('LogViewerPanel', 'Clearing logs in webview');
+        this._panel.webview.postMessage({
+            command: 'clearLogs',
+        });
     }
 
     /**
