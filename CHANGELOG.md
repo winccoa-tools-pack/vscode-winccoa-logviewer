@@ -10,56 +10,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### ✨ Added
 
 - **Auto-Clear on Script Execution**: New quick-toggle button (🗑) in the toolbar
-  - Integrates with WinCC OA Script Actions extension
-  - When active, clears all logs automatically before each script run
-  - Tooltip indicates whether Script Actions extension is required
-  - Persisted across sessions via workspace settings (`winccoaLogviewer.autoClearOnScriptExecution`)
-  - New VS Code command: `winccoa-logviewer.clearLogs`
+    - Integrates with WinCC OA Script Actions extension
+    - When active, clears all logs automatically before each script run
+    - Tooltip indicates whether Script Actions extension is required
+    - Persisted across sessions via workspace settings (`winccoaLogviewer.autoClearOnScriptExecution`)
+    - New VS Code command: `winccoa-logviewer.clearLogs`
 
 ### 🔄 Changed
 
 - **Default log order**: Newest logs now appear at the **bottom** (chronological order) by default instead of top
 - **Toolbar layout**: History button moved to the settings (⚙️) dropdown menu as "Load History..."
 - **Settings dropdown**: Removed "Open Settings" link (available via VS Code settings directly)
-  
 
 ## [2.3.0] - 2026-03-01
 
 ### Added
 
 - **🎨 Unified Color Palette**: Complete redesign of color system across all UI elements
-  - Plain text mode, filter buttons, and level column now share consistent color scheme
-  - Manager-specific prefix coloring (WCCOActrl = lavender, WCCILevent = mauve, WCCILdataSQLite = blue, etc.)
-  - Three-part coloring for INFO/DEBUG levels (prefix/severity-flag/description)
-  - Severity colors: INFO (green), DEBUG (blue), WARNING (gold), SEVERE (red), FATAL (bright red), OTHER (rosé-gold)
-  - Clickable file paths in VS Code blue (#569cd6)
+    - Plain text mode, filter buttons, and level column now share consistent color scheme
+    - Manager-specific prefix coloring (WCCOActrl = lavender, WCCILevent = mauve, WCCILdataSQLite = blue, etc.)
+    - Three-part coloring for INFO/DEBUG levels (prefix/severity-flag/description)
+    - Severity colors: INFO (green), DEBUG (blue), WARNING (gold), SEVERE (red), FATAL (bright red), OTHER (rosé-gold)
+    - Clickable file paths in VS Code blue (#569cd6)
 
 - **☀️ Light/Dark Theme Support**: Automatic theme detection with dual color palettes
-  - MutationObserver watches VS Code theme changes in real-time
-  - Light theme uses darker colors for readability on white background
-  - Dark theme uses vibrant colors optimized for dark background
-  - Seamless switching when user changes VS Code theme
+    - MutationObserver watches VS Code theme changes in real-time
+    - Light theme uses darker colors for readability on white background
+    - Dark theme uses vibrant colors optimized for dark background
+    - Seamless switching when user changes VS Code theme
 
 - **📐 Perfect Column Alignment**: Enhanced plain text mode layout
-  - Manager identifiers with right-aligned numbers (WCCOActrl      (6))
-  - Fixed-width columns ensure vertical alignment across all log entries
-  - Names left-aligned, numbers right-aligned within 21ch column width
-  - Flex-based layout for pixel-perfect positioning
+    - Manager identifiers with right-aligned numbers (WCCOActrl (6))
+    - Fixed-width columns ensure vertical alignment across all log entries
+    - Names left-aligned, numbers right-aligned within 21ch column width
+    - Flex-based layout for pixel-perfect positioning
 
 - **↔️ Horizontal Scrolling**: Terminal-like behavior for long log lines
-  - Lines no longer wrap – scroll horizontally to see full content
-  - `whiteSpace: 'pre'` preserves exact formatting
-  - Single scroll container for smooth bidirectional scrolling
-  - No nested scroll conflicts – seamless mouse wheel transitions
+    - Lines no longer wrap – scroll horizontally to see full content
+    - `whiteSpace: 'pre'` preserves exact formatting
+    - Single scroll container for smooth bidirectional scrolling
+    - No nested scroll conflicts – seamless mouse wheel transitions
 
 ### Changed
 
 - **Plain Text Mode Enhancements**:
-  - Line height increased to 1.6 for better readability
-  - Small left padding (4px) for breathing room
-  - FATAL/SEVERE entries get subtle vertical spacing for visual separation
-  - Continuation lines (Stacktrace, Script, Line) always in near-white/near-black with clickable links
-  - `at <path>:<line>` patterns in stacktraces now recognized and made clickable
+    - Line height increased to 1.6 for better readability
+    - Small left padding (4px) for breathing room
+    - FATAL/SEVERE entries get subtle vertical spacing for visual separation
+    - Continuation lines (Stacktrace, Script, Line) always in near-white/near-black with clickable links
+    - `at <path>:<line>` patterns in stacktraces now recognized and made clickable
 
 ### Fixed
 
@@ -76,66 +75,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **🔗 Clickable File Paths in Plain Text Mode**: File paths with known extensions (`.ctl`, `.ctlpp`, `.js`, `.ts`, etc.) are now detected via regex and rendered as clickable links
-  - Supports Windows paths (`c:/repos/...`) in raw log lines
-  - Automatically extracts line number from `Line: 28` patterns in the same log entry
-  - Click opens the file directly in the editor, jumping to the correct line
+    - Supports Windows paths (`c:/repos/...`) in raw log lines
+    - Automatically extracts line number from `Line: 28` patterns in the same log entry
+    - Click opens the file directly in the editor, jumping to the correct line
 
 ## [2.2.0] - 2026-02-28
 
 ### Added
 
 - **📄 Plain Text Mode**: New view toggle between structured parsed view and plain text log output
-  - Renders raw log lines exactly as they appear in the log files (classic terminal feel)
-  - First line of each event color-coded by severity (WARNING = yellow, FATAL/SEVERE = red, etc.)
-  - Continuation lines (stacktrace, metadata) shown in default text color
-  - Toggle button `Plain` / `Parsed` in toolbar (between History and Pause buttons)
-  - **Plain Text Mode is the new default** – classic log window experience out of the box
-  - State persisted across panel close/reopen (per workspace)
-  - All existing filters (severity, search, file selection) work in both modes
-  - Column header row hidden automatically in plain text mode
+    - Renders raw log lines exactly as they appear in the log files (classic terminal feel)
+    - First line of each event color-coded by severity (WARNING = yellow, FATAL/SEVERE = red, etc.)
+    - Continuation lines (stacktrace, metadata) shown in default text color
+    - Toggle button `Plain` / `Parsed` in toolbar (between History and Pause buttons)
+    - **Plain Text Mode is the new default** – classic log window experience out of the box
+    - State persisted across panel close/reopen (per workspace)
+    - All existing filters (severity, search, file selection) work in both modes
+    - Column header row hidden automatically in plain text mode
 
 ## [2.1.0] - 2026-01-25
 
 ### Added
 
 - **🚀 Background Log Monitoring**: File watcher now runs permanently in background (independent of LogViewer Panel)
-  - Logs are collected even when LogViewer panel is closed
-  - MCP/Copilot Tools have access to latest logs at all times
-  - Ringbuffer with configurable limit (default: 500 events, range: 100-5000)
-  - Automatic cleanup to prevent memory issues
-  - Event batching (100ms) for performance optimization
+    - Logs are collected even when LogViewer panel is closed
+    - MCP/Copilot Tools have access to latest logs at all times
+    - Ringbuffer with configurable limit (default: 500 events, range: 100-5000)
+    - Automatic cleanup to prevent memory issues
+    - Event batching (100ms) for performance optimization
 - **LogBackgroundService**: New singleton service for background log collection
-  - Consumer Pattern: Panel and MCP Tools subscribe to service events
-  - Automatic restart on project/log path changes
-  - Smart memory management with ringbuffer
+    - Consumer Pattern: Panel and MCP Tools subscribe to service events
+    - Automatic restart on project/log path changes
+    - Smart memory management with ringbuffer
 - **Configuration Settings**:
-  - `winccoaLogviewer.background.enabled`: Enable/disable background monitoring (default: true)
-  - `winccoaLogviewer.background.maxEvents`: Ringbuffer size (default: 500)
+    - `winccoaLogviewer.background.enabled`: Enable/disable background monitoring (default: true)
+    - `winccoaLogviewer.background.maxEvents`: Ringbuffer size (default: 500)
 - **Enhanced Logging**: Comprehensive status reporting in Extension Output
-  - Extension start: Version, background logging status, ringbuffer size
-  - Project selection: Active project, log folder path, validation status
-  - File selection changes: Detailed watch list with added/removed/unchanged files
-  - Ringbuffer monitoring: Status every 50 events (X/500 events, Y% filled)
-  - Auto-activation: Extension starts on VS Code launch (`onStartupFinished`)
+    - Extension start: Version, background logging status, ringbuffer size
+    - Project selection: Active project, log folder path, validation status
+    - File selection changes: Detailed watch list with added/removed/unchanged files
+    - Ringbuffer monitoring: Status every 50 events (X/500 events, Y% filled)
+    - Auto-activation: Extension starts on VS Code launch (`onStartupFinished`)
 
 ### Changed
 
 - **Panel Architecture**: LogViewerPanel is now a consumer instead of watcher owner
-  - Subscribes to BackgroundService events
-  - Receives initial buffered events on open
-  - No longer manages LogFileWatcher lifecycle
+    - Subscribes to BackgroundService events
+    - Receives initial buffered events on open
+    - No longer manages LogFileWatcher lifecycle
 - **Language Model Tools**: Now use BackgroundService instead of own event store
-  - Removed duplicate in-memory storage (was 10,000 events)
-  - Direct access to background ringbuffer (500 events by default)
-  - Better memory efficiency
+    - Removed duplicate in-memory storage (was 10,000 events)
+    - Direct access to background ringbuffer (500 events by default)
+    - Better memory efficiency
 
 ### Fixed
 
 - **Race Condition**: File-level locking prevents parser state corruption
-  - Multiple file change events can fire simultaneously
-  - Locking ensures sequential processing per file
-  - Parser state is now protected from concurrent access
-  - Fixes intermittent missing events (21 vs 22 in tests)
+    - Multiple file change events can fire simultaneously
+    - Locking ensures sequential processing per file
+    - Parser state is now protected from concurrent access
+    - Fixes intermittent missing events (21 vs 22 in tests)
 
 ### Technical Details
 
@@ -149,16 +148,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.0.0] - 2026-01-15
 
 ### Added
+
 - **🤖 GitHub Copilot Integration**: Language Model Tools for autonomous log analysis
-  - **logviewer_query_logs**: Query log events with filters (severity, time range, search pattern)
-  - **logviewer_get_recent_errors**: Get last N error/warning events
-  - **logviewer_search_pattern**: Search for specific patterns in logs
-  - **logviewer_get_by_severity**: Get all events by severity level
-  - Enables Copilot to analyze WinCC OA logs, find errors, and troubleshoot issues autonomously
-  - Uses VS Code's native Language Model Tools API (vscode.lm.registerTool)
-  - Clean service architecture with LanguageModelToolsService
+    - **logviewer_query_logs**: Query log events with filters (severity, time range, search pattern)
+    - **logviewer_get_recent_errors**: Get last N error/warning events
+    - **logviewer_search_pattern**: Search for specific patterns in logs
+    - **logviewer_get_by_severity**: Get all events by severity level
+    - Enables Copilot to analyze WinCC OA logs, find errors, and troubleshoot issues autonomously
+    - Uses VS Code's native Language Model Tools API (vscode.lm.registerTool)
+    - Clean service architecture with LanguageModelToolsService
 
 ### Technical Details
+
 - In-memory log event storage (max 10,000 events)
 - Real-time event forwarding from LogFileWatcher to Language Model Tools Service
 - All tools return structured JSON with event details (timestamp, severity, message, metadata)
