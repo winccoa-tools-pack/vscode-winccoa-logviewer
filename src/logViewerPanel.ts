@@ -1,9 +1,7 @@
 import * as vscode from 'vscode';
-import { LogFileWatcher } from './logFileWatcher';
 import { LogEvent } from './logEvent';
 import { ExtensionOutputChannel } from './extensionOutput';
 import { getBackgroundService } from './extension';
-import { LogBackgroundService } from './logBackgroundService';
 
 export class LogViewerPanel {
     public static currentPanel: LogViewerPanel | undefined;
