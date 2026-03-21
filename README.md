@@ -14,9 +14,8 @@
 
 ---
 
-> **Latest Update (v2.3.0):**
-> Enhanced plain text mode with unified color palette, light/dark theme support, perfect column alignment, and horizontal scrolling. See [CHANGELOG](CHANGELOG.md) for details.
-
+> **Latest Update (v2.3.0):** Enhanced plain text mode with unified color palette, light/dark theme support, perfect column alignment, and horizontal scrolling. See [CHANGELOG](CHANGELOG.md) for details.
+>
 > **Tip:** If the extension doesn't work as expected, try `Ctrl+Shift+P` → `Reload Window` to refresh.
 
 ---
@@ -37,10 +36,10 @@
 - **Pause/Resume**: Control log streaming on demand
 - **Newest First**: Toggle to show most recent events first
 - **Plain Text Mode**: Toggle between structured table view and classic plain text log output (default)
-  - **🎨 Color Coded**: Manager-specific colors, severity-based highlighting
-  - **☀️ Theme Support**: Automatic light/dark theme detection
-  - **📐 Perfect Alignment**: Fixed-width columns for clean vertical alignment
-  - **↔️ Horizontal Scroll**: Terminal-like scrolling for long lines
+    - **🎨 Color Coded**: Manager-specific colors, severity-based highlighting
+    - **☀️ Theme Support**: Automatic light/dark theme detection
+    - **📐 Perfect Alignment**: Fixed-width columns for clean vertical alignment
+    - **↔️ Horizontal Scroll**: Terminal-like scrolling for long lines
 
 ### 🔍 Advanced Filtering & Analysis
 
