@@ -51,7 +51,7 @@ module.exports = tseslint.config(
       // Mirror your original TS rule settings
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'off',
-      // TODO: Fix these issues - see https://github.com/winccoa-tools-pack/vscode-winccoa-ctrllang/issues/33
+      // TODO: Fix these issues - see https://github.com/winccoa-tools-pack/vscode-winccoa-logviewer/issues/33
       '@typescript-eslint/no-require-imports': 'off',
       'no-useless-escape': 'off',
     },
