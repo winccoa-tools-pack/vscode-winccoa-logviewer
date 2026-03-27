@@ -8,7 +8,7 @@ export default defineConfig({
     tests: [
         {
             label: 'unitTests',
-            files: 'out/test/suite/index.js',
+            files: 'dist/test/suite/index.js',
             version: 'stable',
             mocha: {
                 ui: 'tdd',
@@ -17,7 +17,7 @@ export default defineConfig({
         },
         {
             label: 'integrationTests',
-            files: 'out/test/suite/index.js',
+            files: 'dist/test/suite/index.js',
             version: 'stable',
             workspaceFolder: './test-workspace',
             mocha: {

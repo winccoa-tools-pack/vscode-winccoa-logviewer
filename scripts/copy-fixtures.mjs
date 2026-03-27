@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const projectRoot = path.resolve(import.meta.dirname, '..');
 const srcDir = path.join(projectRoot, 'src', 'test', 'fixtures');
-const destDir = path.join(projectRoot, 'out', 'test', 'fixtures');
+const destDir = path.join(projectRoot, 'dist', 'test', 'fixtures');
 
 if (!fs.existsSync(srcDir)) {
   console.error(`Missing fixtures source directory: ${srcDir}`);
